@@ -27,10 +27,18 @@ class scaleDB(AFXDataDialog):
     scaleForm will create an instance of this class when the user requests it.
     """
 
+    [
+        ID_DEFAULTS,
+        ID_LAST
+    ] = range(AFXDataDialog.ID_LAST, AFXDataDialog.ID_LAST + 2)
+
     def __init__(self, form):
         # Construct the base class.
         AFXDataDialog.__init__(self, form, "Legend Scale Manager", 
                 self.OK | self.APPLY | self.DISMISS, DIALOG_NORMAL)
+
+        self.appendActionButton(text='Defaults', tgt=self, sel=self.ID_DEFAULTS)
+        FXMAPFUNC(self, SEL_COMMAND, self.ID_DEFAULTS, scaleDB.onDefaults)
 
         self.vpNameKw = form.vpNameKw # local reference
 
@@ -104,6 +112,11 @@ class scaleDB(AFXDataDialog):
             self.max.getTarget().setValue(minmax[1])
             self.minmax = minmax
 
+    def onDefaults(self, sender, sel, ptr):
+        "User requested return to default settings."
+        sendCommand("scale.restore_defaults(%r)"%self.vpNameKw.getValue())
+        return 1
+
 ###########################################################################
 # Form definition
 ###########################################################################
@@ -174,9 +187,10 @@ toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager',
                               object=scaleForm(toolset),
                               kernelInitString='import scale',
                               author='Carl Osterwisch',
-                              version=str(0.2),
+                              version=str(0.3),
                               applicableModules=['Visualization'],
                               description='Configure legend scale.'
                               )
 
 # Version 0.2, August 2007: Added color buttons
+# Version 0.3, May 2008: Added defaults button

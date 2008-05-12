@@ -53,3 +53,16 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
         except NameError:
             # Abaqus CAE version < 6.6
             pass
+
+
+def restore_defaults(vpName):
+    """Set the contour legend scale to the default values."""
+    viewport = session.viewports[vpName]
+    if hasattr(viewport.odbDisplay, 'contourOptions'):
+        contourOptions = viewport.odbDisplay.contourOptions
+        default = session.defaultOdbDisplay.contourOptions
+        contourOptions.setValues(
+                minAutoCompute=default.minAutoCompute,
+                maxAutoCompute=default.maxAutoCompute,
+                intervalType=default.intervalType,
+                numIntervals=default.numIntervals)
