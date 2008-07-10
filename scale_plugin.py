@@ -1,7 +1,10 @@
 """Define the AFXForm class to handle scale dialog box events.
 
 Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
+$Id$
 """
+
+__version__ = 0.4
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -37,7 +40,7 @@ class scaleDB(AFXDataDialog):
         AFXDataDialog.__init__(self, form, "Legend Scale Manager", 
                 self.OK | self.APPLY | self.DISMISS, DIALOG_NORMAL)
 
-        self.appendActionButton(text='Defaults', tgt=self, sel=self.ID_DEFAULTS)
+        self.appendActionButton(text='Reset', tgt=self, sel=self.ID_DEFAULTS)
         FXMAPFUNC(self, SEL_COMMAND, self.ID_DEFAULTS, scaleDB.onDefaults)
 
         self.vpNameKw = form.vpNameKw # local reference
@@ -66,6 +69,14 @@ class scaleDB(AFXDataDialog):
         guide.setValue(15)
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
+
+        s = AFXComboBox(p=buttonframe,
+                ncols=0,
+                nvis=3,
+                text='Format',
+                tgt=form.formatKw)
+        for v in (SCIENTIFIC, ENGINEERING, FIXED):
+            s.appendItem(text=v.getText(), sel=v.getId())
         
         AFXColorButton(p=buttonframe, text='', tgt=form.color1Kw)
         AFXColorButton(p=buttonframe, text='', tgt=form.color2Kw)
@@ -73,10 +84,6 @@ class scaleDB(AFXDataDialog):
         FXCheckButton(p=buttonframe, 
                 text='Reverse',
                 tgt=form.reverseKw)
-
-        FXCheckButton(p=buttonframe,
-                text='Show max/min',
-                tgt=form.legendMinMaxKw)
 
     def show(self):
         "Called to display the dialog box"
@@ -126,6 +133,18 @@ class scaleForm(AFXForm):
     def __init__(self, owner):
 
         AFXForm.__init__(self, owner) # Construct the base class.
+
+        # viewportAnnotationOptions command
+        vpAnnotations = AFXGuiCommand(mode=self,
+                method='setValues',
+                objectName='session.viewports[%s].viewportAnnotationOptions',
+                registerQuery=TRUE)
+
+        self.formatKw = AFXSymConstKeyword(
+                command=vpAnnotations,
+                name='legendNumberFormat',
+                isRequired=TRUE,
+                defaultValue=SCIENTIFIC.getId())
                 
         # setup_scale kernel command
         setup_scale = AFXGuiCommand(mode=self, 
@@ -167,16 +186,6 @@ class scaleForm(AFXForm):
                 isRequired=TRUE,
                 defaultValue='#800000')
 
-        # viewportAnnotationOptions command
-        setValues = AFXGuiCommand(mode=self,
-                method='setValues',
-                objectName='session.viewports[%s].viewportAnnotationOptions',
-                registerQuery=FALSE)
-
-        self.legendMinMaxKw = AFXBoolKeyword(command=setValues,
-                name='legendMinMax',
-                isRequired=TRUE)
-
     def getFirstDialog(self):
         return scaleDB(self)
 
@@ -187,10 +196,11 @@ toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager',
                               object=scaleForm(toolset),
                               kernelInitString='import scale',
                               author='Carl Osterwisch',
-                              version=str(0.3),
+                              version=str(__version__),
                               applicableModules=['Visualization'],
                               description='Configure legend scale.'
                               )
 
 # Version 0.2, August 2007: Added color buttons
 # Version 0.3, May 2008: Added defaults button
+# Version 0.4, July 2008: Added format box, removed max/min

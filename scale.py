@@ -1,3 +1,5 @@
+# $Id$
+
 from abaqus import *
 from abaqusConstants import *
 
@@ -44,12 +46,14 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
                 outsideLimitsAboveColor=color2, 
                 outsideLimitsBelowColor=color1)
 
-        decPlaces = int(max(-math.floor(math.log10(tic)), 0))
+        decPlaces = int(max(-math.floor(math.log10(tic)), 0)) + 1
         annotationOptions = viewport.viewportAnnotationOptions
         try:
             if FIXED == annotationOptions.legendNumberFormat:
                 # Abaqus CAE 6.6, fixed format legend
                 annotationOptions.setValues(legendDecimalPlaces=decPlaces)
+            else:
+                annotationOptions.setValues(legendDecimalPlaces=3)
         except NameError:
             # Abaqus CAE version < 6.6
             pass
