@@ -4,7 +4,7 @@ Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
 $Id$
 """
 
-__version__ = 0.4
+__version__ = 0.5
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -144,7 +144,7 @@ class scaleForm(AFXForm):
                 command=vpAnnotations,
                 name='legendNumberFormat',
                 isRequired=TRUE,
-                defaultValue=SCIENTIFIC.getId())
+                defaultValue=FIXED.getId())
                 
         # setup_scale kernel command
         setup_scale = AFXGuiCommand(mode=self, 
@@ -204,3 +204,4 @@ toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager',
 # Version 0.2, August 2007: Added color buttons
 # Version 0.3, May 2008: Added defaults button
 # Version 0.4, July 2008: Added format box, removed max/min
+# Version 0.5, December 2008: Changed default to FIXED
