@@ -46,7 +46,7 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
                 outsideLimitsAboveColor=color2, 
                 outsideLimitsBelowColor=color1)
 
-        decPlaces = int(max(-math.floor(math.log10(tic)), 0)) + 1
+        decPlaces = int(max(-math.floor(math.log10(tic)), 0))
         annotationOptions = viewport.viewportAnnotationOptions
         try:
             if FIXED == annotationOptions.legendNumberFormat:
