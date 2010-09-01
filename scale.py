@@ -11,7 +11,7 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
     import math
 
     viewport = session.viewports[vpName]
-    if hasattr(viewport.odbDisplay, 'contourOptions'):
+    if 'contourOptions' in dir(viewport.odbDisplay):
         contourOptions = viewport.odbDisplay.contourOptions
         
         span = maxScale - minScale
@@ -37,12 +37,12 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
 
         if reverse:
             contourOptions.setValues(
-                spectrumType=REVERSED_RAINBOW, 
+                spectrum=REVERSED_RAINBOW, 
                 outsideLimitsAboveColor=color1, 
                 outsideLimitsBelowColor=color2)
         else:
             contourOptions.setValues(
-                spectrumType=RAINBOW, 
+                spectrum=RAINBOW, 
                 outsideLimitsAboveColor=color2, 
                 outsideLimitsBelowColor=color1)
 
@@ -62,11 +62,16 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
 def restore_defaults(vpName):
     """Set the contour legend scale to the default values."""
     viewport = session.viewports[vpName]
-    if hasattr(viewport.odbDisplay, 'contourOptions'):
-        contourOptions = viewport.odbDisplay.contourOptions
+    if 'contourOptions' in dir(viewport.odbDisplay):
         default = session.defaultOdbDisplay.contourOptions
-        contourOptions.setValues(
+        viewport.odbDisplay.contourOptions.setValues(
                 minAutoCompute=default.minAutoCompute,
                 maxAutoCompute=default.maxAutoCompute,
                 intervalType=default.intervalType,
-                numIntervals=default.numIntervals)
+                numIntervals=default.numIntervals,
+                spectrum=default.spectrum,
+                outsideLimitsAboveColor=default.outsideLimitsAboveColor, 
+                outsideLimitsBelowColor=default.outsideLimitsBelowColor)
+        viewport.viewportAnnotationOptions.setValues(   # TODO: read actual default values
+                legendNumberFormat=SCIENTIFIC,  # Not compatible with versions < 6.7
+                legendDecimalPlaces=3)
