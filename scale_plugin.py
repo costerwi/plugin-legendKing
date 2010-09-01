@@ -4,7 +4,7 @@ Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
 $Id$
 """
 
-__version__ = 0.6
+__version__ = 0.61
 
 from abaqusGui import *
 from abaqusConstants import *
