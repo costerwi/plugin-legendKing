@@ -4,7 +4,7 @@ Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
 $Id$
 """
 
-__version__ = 0.5
+__version__ = 0.6
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -103,7 +103,7 @@ class scaleDB(AFXDataDialog):
             # to be updated.
             viewport = session.viewports[session.currentViewportName]
             self.vpNameKw.setValue(viewport.name)
-            if hasattr(viewport.odbDisplay, 'contourOptions'):
+            if 'contourOptions' in dir(viewport.odbDisplay):
                 self.contourOptions = viewport.odbDisplay.contourOptions
                 self.contourQuery = myQuery(self.contourOptions, 
                         self.onContourChanged)
@@ -205,3 +205,4 @@ toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager',
 # Version 0.3, May 2008: Added defaults button
 # Version 0.4, July 2008: Added format box, removed max/min
 # Version 0.5, December 2008: Changed default to FIXED
+# Version 0.6, September 2010: Better checking for odb in display, better reset
