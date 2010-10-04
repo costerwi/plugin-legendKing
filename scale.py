@@ -14,6 +14,8 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
     if 'contourOptions' in dir(viewport.odbDisplay):
         contourOptions = viewport.odbDisplay.contourOptions
         
+        if minScale > maxScale:
+            minScale, maxScale = maxScale, minScale # swap if necessary
         span = maxScale - minScale
         order = 10.0**math.floor(math.log10(span))
         tic = order*5
