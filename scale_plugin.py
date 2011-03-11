@@ -4,7 +4,7 @@ Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
 $Id$
 """
 
-__version__ = 0.62
+__version__ = 0.63
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -103,11 +103,13 @@ class scaleDB(AFXDataDialog):
             # to be updated.
             viewport = session.viewports[session.currentViewportName]
             self.vpNameKw.setValue(viewport.name)
-            if 'contourOptions' in dir(viewport.odbDisplay):
+            if hasattr(viewport.displayedObject, 'steps'):
+                # Seems to be an odb display
                 self.contourOptions = viewport.odbDisplay.contourOptions
                 self.contourQuery = myQuery(self.contourOptions, 
                         self.onContourChanged)
             else:
+                # Other display object (xyplot, etc)
                 self.contourQuery = None
 
     def onContourChanged(self):
