@@ -4,7 +4,7 @@ Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
 $Id$
 """
 
-__version__ = 0.63
+__version__ = 0.64
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -94,7 +94,7 @@ class scaleDB(AFXDataDialog):
 
     def hide(self):
         "Called to remove the dialog box"
-        del self.sessionQuery, self.contourQuery
+        del self.sessionQuery, self.minmaxQuery
         AFXDataDialog.hide(self)
 
     def onSessionChanged(self):
@@ -105,17 +105,34 @@ class scaleDB(AFXDataDialog):
             self.vpNameKw.setValue(viewport.name)
             if hasattr(viewport.displayedObject, 'steps'):
                 # Seems to be an odb display
+                plotState = viewport.odbDisplay.display.plotState
                 self.contourOptions = viewport.odbDisplay.contourOptions
-                self.contourQuery = myQuery(self.contourOptions, 
+                self.symbolOptions = viewport.odbDisplay.symbolOptions
+                if SYMBOLS_ON_DEF in plotState or SYMBOLS_ON_UNDEF in plotState:
+                    # Symbol plot
+                    self.minmaxQuery = myQuery(self.symbolOptions, 
+                        self.onSymbolChanged)
+                else:
+                    # Assume contour plot
+                    self.minmaxQuery = myQuery(self.contourOptions, 
                         self.onContourChanged)
             else:
                 # Other display object (xyplot, etc)
-                self.contourQuery = None
+                self.minmaxQuery = None
 
     def onContourChanged(self):
         minmax = (self.contourOptions.autoMinValue,
                 self.contourOptions.autoMaxValue)
-        if minmax != self.minmax:
+        if minmax != self.minmax and isinstance(minmax[0], float):
+            inc = (minmax[1] - minmax[0])/10
+            self.min.getTarget().setValue(minmax[0])
+            self.max.getTarget().setValue(minmax[1])
+            self.minmax = minmax
+
+    def onSymbolChanged(self):
+        minmax = (self.symbolOptions.autoVectorMinValue,
+                self.symbolOptions.autoVectorMaxValue)
+        if minmax != self.minmax and isinstance(minmax[0], float):
             inc = (minmax[1] - minmax[0])/10
             self.min.getTarget().setValue(minmax[0])
             self.max.getTarget().setValue(minmax[1])

@@ -13,6 +13,7 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
     viewport = session.viewports[vpName]
     if 'contourOptions' in dir(viewport.odbDisplay):
         contourOptions = viewport.odbDisplay.contourOptions
+        symbolOptions = viewport.odbDisplay.symbolOptions
         
         if minScale > maxScale:
             minScale, maxScale = maxScale, minScale # swap if necessary
@@ -36,17 +37,25 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
                 minAutoCompute=OFF, maxAutoCompute=OFF,
                 intervalType=UNIFORM,
                 numIntervals=intervals)
+        symbolOptions.setValues(vectorMinValue = minScale,
+                vectorMaxValue = maxScale,
+                vectorMinValueAutoCompute=OFF, vectorMaxValueAutoCompute=OFF,
+                vectorIntervalNumber=intervals)
 
         if reverse:
             contourOptions.setValues(
                 spectrumType=REVERSED_RAINBOW, 
                 outsideLimitsAboveColor=color1, 
                 outsideLimitsBelowColor=color2)
+            symbolOptions.setValues(
+                vectorColorSpectrum='Reversed rainbow') 
         else:
             contourOptions.setValues(
                 spectrumType=RAINBOW, 
                 outsideLimitsAboveColor=color2, 
                 outsideLimitsBelowColor=color1)
+            symbolOptions.setValues(
+                vectorColorSpectrum='Rainbow') 
 
         decPlaces = int(max(-math.floor(math.log10(tic)), 0))
         annotationOptions = viewport.viewportAnnotationOptions
@@ -74,6 +83,14 @@ def restore_defaults(vpName):
                 spectrum=default.spectrum,
                 outsideLimitsAboveColor=default.outsideLimitsAboveColor, 
                 outsideLimitsBelowColor=default.outsideLimitsBelowColor)
+
+        default = session.defaultOdbDisplay.symbolOptions
+        viewport.odbDisplay.symbolOptions.setValues(
+                vectorMinValueAutoCompute=default.vectorMinValueAutoCompute,
+                vectorMaxValueAutoCompute=default.vectorMaxValueAutoCompute,
+                vectorIntervalNumber=default.vectorIntervalNumber,
+                vectorColorSpectrum=default.vectorColorSpectrum)
+
         viewport.viewportAnnotationOptions.setValues(   # TODO: read actual default values
                 legendNumberFormat=SCIENTIFIC,  # Not compatible with versions < 6.7
                 legendDecimalPlaces=3)
