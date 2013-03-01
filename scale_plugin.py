@@ -4,7 +4,7 @@ Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
 $Id$
 """
 
-__version__ = 0.64
+__version__ = 0.7
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -31,9 +31,10 @@ class scaleDB(AFXDataDialog):
     """
 
     [
+        ID_RESTORE,
         ID_DEFAULTS,
         ID_LAST
-    ] = range(AFXDataDialog.ID_LAST, AFXDataDialog.ID_LAST + 2)
+    ] = range(AFXDataDialog.ID_LAST, AFXDataDialog.ID_LAST + 3)
 
     def __init__(self, form):
         # Construct the base class.
@@ -87,14 +88,17 @@ class scaleDB(AFXDataDialog):
 
     def show(self):
         "Called to display the dialog box"
-        self.vpNameKw.setValueToDefault()
+        self.vpNameKw.setValueToDefault() # Forces update in onSessionChanged()
+        self.primaryVariable = None
         self.minmax = None
         self.sessionQuery = myQuery(session, self.onSessionChanged)
         AFXDataDialog.show(self)
 
     def hide(self):
         "Called to remove the dialog box"
-        del self.sessionQuery, self.minmaxQuery
+        self.variableQuery = None
+        self.sessionQuery = None
+        self.minmaxQuery = None
         AFXDataDialog.hide(self)
 
     def onSessionChanged(self):
@@ -106,8 +110,11 @@ class scaleDB(AFXDataDialog):
             if hasattr(viewport.displayedObject, 'steps'):
                 # Seems to be an odb display
                 plotState = viewport.odbDisplay.display.plotState
+                self.odbDisplay = viewport.odbDisplay
                 self.contourOptions = viewport.odbDisplay.contourOptions
                 self.symbolOptions = viewport.odbDisplay.symbolOptions
+                self.variableQuery = myQuery(viewport.odbDisplay,
+                        self.onDisplayChanged)
                 if SYMBOLS_ON_DEF in plotState or SYMBOLS_ON_UNDEF in plotState:
                     # Symbol plot
                     self.minmaxQuery = myQuery(self.symbolOptions, 
@@ -120,13 +127,20 @@ class scaleDB(AFXDataDialog):
                 # Other display object (xyplot, etc)
                 self.minmaxQuery = None
 
+    def onDisplayChanged(self):
+        "Changed odbDisplay; recall previous settings"
+        if self.primaryVariable != self.odbDisplay.primaryVariable:
+            self.primaryVariable = self.odbDisplay.primaryVariable
+            sendCommand("scale.recall(%r)"%self.vpNameKw.getValue())
+
     def onContourChanged(self):
         minmax = (self.contourOptions.autoMinValue,
                 self.contourOptions.autoMaxValue)
         if minmax != self.minmax and isinstance(minmax[0], float):
             inc = (minmax[1] - minmax[0])/10
-            self.min.getTarget().setValue(minmax[0])
-            self.max.getTarget().setValue(minmax[1])
+            if self.min.getTarget():
+                self.min.getTarget().setValue(minmax[0])
+                self.max.getTarget().setValue(minmax[1])
             self.minmax = minmax
 
     def onSymbolChanged(self):
@@ -167,7 +181,7 @@ class scaleForm(AFXForm):
                 
         # setup_scale kernel command
         setup_scale = AFXGuiCommand(mode=self, 
-                method='setup_scale', 
+                method='setValues', 
                 objectName='scale',
                 registerQuery=FALSE)
 
@@ -225,3 +239,4 @@ toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager',
 # Version 0.4, July 2008: Added format box, removed max/min
 # Version 0.5, December 2008: Changed default to FIXED
 # Version 0.6, September 2010: Better checking for odb in display, better reset
+# Version 0.7, April 2012: Save setings for each primary variable
