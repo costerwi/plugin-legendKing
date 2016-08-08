@@ -129,6 +129,8 @@ class scaleDB(AFXDataDialog):
 
     def onDisplayChanged(self):
         "Changed odbDisplay; recall previous settings"
+        if not hasattr(self.odbDisplay, 'primaryVariable'):
+            return
         if self.primaryVariable != self.odbDisplay.primaryVariable:
             self.primaryVariable = self.odbDisplay.primaryVariable
             sendCommand("scale.recall(%r)"%self.vpNameKw.getValue())
