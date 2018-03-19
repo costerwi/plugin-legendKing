@@ -15,6 +15,7 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
     
     Carl Osterwisch <carl.osterwisch@avlna.com> 2006"""
     import math
+    debug = os.environ.has_key('DEBUG')
 
     viewport = session.viewports[vpName]
     if 'contourOptions' in dir(viewport.odbDisplay):
@@ -68,17 +69,26 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
                 tensorColorSpectrum='Rainbow', 
                 vectorColorSpectrum='Rainbow') 
 
-        decPlaces = int(max(-math.floor(math.log10(tic)), 0))
         annotationOptions = viewport.viewportAnnotationOptions
         try:
             if FIXED == annotationOptions.legendNumberFormat:
-                # Abaqus CAE 6.6, fixed format legend
+                decPlaces = 0
+                ticStr = '%g'%tic
+                decIndex = ticStr.find('.')
+                if decIndex > 0:
+                    decPlaces = len(ticStr) - decIndex - 1
+                if debug:
+                    print repr(ticStr), len(ticStr), decIndex, decPlaces
                 annotationOptions.setValues(legendDecimalPlaces=decPlaces)
             else:
+                if debug:
+                    print annotationOptions.legendNumberFormat, 'not FIXED'
                 annotationOptions.setValues(legendDecimalPlaces=3)
-        except NameError:
+        except NameError as e:
             # Abaqus CAE version < 6.6
             pass
+            if debug:
+                print 'NameError', e
         return True
 
 
