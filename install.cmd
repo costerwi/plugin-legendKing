@@ -1,7 +1,12 @@
 @echo off
 
 set plugin=legendScale
-set destination=%USERPROFILE%\abaqus_plugins
+
+if defined HOME (
+    set destination=%HOME%\abaqus_plugins
+) else (
+    set destination=%USERPROFILE%\abaqus_plugins
+)
 
 echo This script installs the Abaqus plugin "%plugin%" in "%destination%"
 
