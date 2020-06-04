@@ -18,13 +18,13 @@ if not exist "%abaqus_plugins%" (
 
 set destination=%abaqus_plugins%\%plugin%\
 if "%~dp0"=="%destination%" (
-    echo ERROR: Cannot install from destination directory.
+    echo ERROR: Already installed.
     pause
     exit 1
 )
 
 if not exist "%destination%" mkdir "%destination%"
-copy /Y *.* "%destination%"
+copy /Y "%~dp0\*.*" "%destination%"
 if ERRORLEVEL 0 (
     echo Success! Restart Abaqus CAE and check Plugin-ins menu.
 ) else (
