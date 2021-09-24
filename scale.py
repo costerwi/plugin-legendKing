@@ -9,8 +9,8 @@ xmldoc = None   # Settings in memory
 xmlFileName = '~/.legendScale.xml'  # Settings file name
 __version__ = 0.7 # Version of settings file format
 
-def setup_scale(vpName, maxScale, minScale, guide, reverse,
-        color1, color2):
+def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
+        color1=None, color2=None):
     """Set the Abaqus/Viewer contour legend scale to even increments.
     
     Carl Osterwisch <carl.osterwisch@avlna.com> 2006"""
@@ -24,6 +24,14 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse,
         
         if minScale > maxScale:
             minScale, maxScale = maxScale, minScale # swap if necessary
+
+        if None == reverse and contourOptions.spectrum.startswith('Reversed'):
+            reverse = True
+        if None == color1:
+            color1 = contourOptions.outsideLimitsBelowColor
+        if None == color2:
+            color2 = contourOptions.outsideLimitsAboveColor
+
         span = maxScale - minScale
         order = 10.0**math.floor(math.log10(span))
         tic = order*5
@@ -114,8 +122,8 @@ def readXmlFile():
     xmldoc = doc
 
 
-def setValues(vpName, maxScale, minScale, guide, reverse,
-        color1, color2):
+def setValues(vpName, maxScale, minScale, guide, reverse=None,
+        color1=None, color2=None):
     "Set scale and save these settings for future recall"
 
     if not setup_scale(vpName, maxScale, minScale, guide, reverse,
