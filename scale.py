@@ -13,7 +13,7 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
         color1=None, color2=None):
     """Set the Abaqus/Viewer contour legend scale to even increments.
     
-    Carl Osterwisch <carl.osterwisch@avlna.com> 2006"""
+    Carl Osterwisch, 2006"""
     import math
     debug = os.environ.has_key('DEBUG')
 
@@ -24,6 +24,15 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
         
         if minScale > maxScale:
             minScale, maxScale = maxScale, minScale # swap if necessary
+        if LOG == contourOptions.intervalType:
+            if minScale <= 0: # avoid numeric error
+                minScale = -12
+            else:
+                minScale = math.log10(minScale)
+            if maxScale <= 10**minScale: # keep maxScale > minScale
+                maxScale = minScale + 8
+            else:
+                maxScale = math.log10(maxScale)
 
         if None == reverse and contourOptions.spectrum.startswith('Reversed'):
             reverse = True
@@ -47,10 +56,12 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
                 intervals += 1
             if minScale > contourOptions.autoMinValue:
                 intervals += 1
-            
+
+        if LOG == contourOptions.intervalType:
+            minScale = 10**minScale
+            maxScale = 10**maxScale
         contourOptions.setValues(minValue = minScale, maxValue = maxScale,
                 minAutoCompute=OFF, maxAutoCompute=OFF,
-                intervalType=UNIFORM,
                 numIntervals=intervals)
         symbolOptions.setValues(vectorMinValue = minScale,
                 vectorMaxValue = maxScale,
