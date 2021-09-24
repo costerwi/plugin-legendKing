@@ -62,7 +62,7 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
 
         if reverse:
             contourOptions.setValues(
-                spectrumType=REVERSED_RAINBOW, 
+                spectrum='Reversed rainbow',
                 outsideLimitsAboveColor=color1, 
                 outsideLimitsBelowColor=color2)
             symbolOptions.setValues(
@@ -70,7 +70,7 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
                 vectorColorSpectrum='Reversed rainbow') 
         else:
             contourOptions.setValues(
-                spectrumType=RAINBOW, 
+                spectrum='Rainbow',
                 outsideLimitsAboveColor=color2, 
                 outsideLimitsBelowColor=color1)
             symbolOptions.setValues(
