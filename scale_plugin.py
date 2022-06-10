@@ -4,7 +4,7 @@ Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
 $Id$
 """
 
-__version__ = 0.8
+__version__ = '0.9.0'
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -38,8 +38,8 @@ class scaleDB(AFXDataDialog):
 
     def __init__(self, form):
         # Construct the base class.
-        AFXDataDialog.__init__(self, form, "Legend Scale Manager", 
-                self.OK | self.APPLY | self.DISMISS, DIALOG_NORMAL)
+        AFXDataDialog.__init__(self, form, "Legend Scale Manager",
+                self.APPLY, DIALOG_NORMAL)
 
         self.appendActionButton(text='Reset', tgt=self, sel=self.ID_DEFAULTS)
         FXMAPFUNC(self, SEL_COMMAND, self.ID_DEFAULTS, scaleDB.onDefaults)
@@ -47,44 +47,42 @@ class scaleDB(AFXDataDialog):
         self.vpNameKw = form.vpNameKw # local reference
 
         mainframe = FXVerticalFrame(self, LAYOUT_FILL_X)
-        
-        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
-        self.min = AFXTextField(p=buttonframe, 
-                ncols=6, 
-                labelText='Min', 
-                tgt=form.minKw,
-                opts=LAYOUT_FILL_X | AFXTEXTFIELD_FLOAT)
 
+        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         self.max = AFXTextField(p=buttonframe,
-                ncols=6, 
-                labelText='Max', 
+                ncols=6,
+                labelText='Max',
                 tgt=form.maxKw,
                 opts=LAYOUT_FILL_X | AFXTEXTFIELD_FLOAT)
+        FXCheckButton(p=buttonframe,
+                text='Exactly',
+                tgt=form.maxExactKw)
+
+        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
+        self.min = AFXTextField(p=buttonframe,
+                ncols=6,
+                labelText='Min',
+                tgt=form.minKw,
+                opts=LAYOUT_FILL_X | AFXTEXTFIELD_FLOAT)
+        FXCheckButton(p=buttonframe,
+                text='Exactly',
+                tgt=form.minExactKw)
+
+        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
+        AFXColorButton(p=buttonframe, text='Colors', tgt=form.color1Kw)
+        AFXColorButton(p=buttonframe, text='', tgt=form.color2Kw)
+        FXCheckButton(p=buttonframe,
+                text='Reverse',
+                tgt=form.reverseKw)
 
         guide = AFXSlider(p=mainframe, tgt=form.guideKw,
-                opts=AFXSLIDER_HORIZONTAL | AFXSLIDER_INSIDE_BAR | LAYOUT_FILL_X) 
+                opts=AFXSLIDER_HORIZONTAL | AFXSLIDER_INSIDE_BAR | LAYOUT_FILL_X)
         guide.setRange(3, 24)
         guide.setIncrement(1)
         guide.setMinLabelText('Fewer Intervals')
         guide.setMaxLabelText('More')
         guide.setValue(15)
 
-        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
-
-        s = AFXComboBox(p=buttonframe,
-                ncols=0,
-                nvis=3,
-                text='Format',
-                tgt=form.formatKw)
-        for v in (SCIENTIFIC, ENGINEERING, FIXED):
-            s.appendItem(text=v.getText(), sel=v.getId())
-        
-        AFXColorButton(p=buttonframe, text='', tgt=form.color1Kw)
-        AFXColorButton(p=buttonframe, text='', tgt=form.color2Kw)
-
-        FXCheckButton(p=buttonframe, 
-                text='Reverse',
-                tgt=form.reverseKw)
 
     def show(self):
         "Called to display the dialog box"
@@ -117,11 +115,11 @@ class scaleDB(AFXDataDialog):
                         self.onDisplayChanged)
                 if SYMBOLS_ON_DEF in plotState or SYMBOLS_ON_UNDEF in plotState:
                     # Symbol plot
-                    self.minmaxQuery = myQuery(self.symbolOptions, 
+                    self.minmaxQuery = myQuery(self.symbolOptions,
                         self.onSymbolChanged)
                 else:
                     # Assume contour plot
-                    self.minmaxQuery = myQuery(self.contourOptions, 
+                    self.minmaxQuery = myQuery(self.contourOptions,
                         self.onContourChanged)
             else:
                 # Other display object (xyplot, etc)
@@ -169,21 +167,9 @@ class scaleForm(AFXForm):
 
         AFXForm.__init__(self, owner) # Construct the base class.
 
-        # viewportAnnotationOptions command
-        vpAnnotations = AFXGuiCommand(mode=self,
-                method='setValues',
-                objectName='session.viewports[%s].viewportAnnotationOptions',
-                registerQuery=TRUE)
-
-        self.formatKw = AFXSymConstKeyword(
-                command=vpAnnotations,
-                name='legendNumberFormat',
-                isRequired=TRUE,
-                defaultValue=FIXED.getId())
-                
         # setup_scale kernel command
-        setup_scale = AFXGuiCommand(mode=self, 
-                method='setValues', 
+        setup_scale = AFXGuiCommand(mode=self,
+                method='setValues',
                 objectName='scale',
                 registerQuery=FALSE)
 
@@ -197,7 +183,7 @@ class scaleForm(AFXForm):
                 isRequired=TRUE,
                 defaultValue=0.)
 
-        self.guideKw = AFXIntKeyword(command=setup_scale, 
+        self.guideKw = AFXIntKeyword(command=setup_scale,
                 name='guide',
                 isRequired=TRUE,
                 defaultValue=15)
@@ -221,17 +207,28 @@ class scaleForm(AFXForm):
                 isRequired=TRUE,
                 defaultValue='#800000')
 
+        self.maxExactKw = AFXBoolKeyword(command=setup_scale,
+                name='maxExact',
+                defaultValue=OFF,
+                isRequired=TRUE)
+
+        self.minExactKw = AFXBoolKeyword(command=setup_scale,
+                name='minExact',
+                defaultValue=OFF,
+                isRequired=TRUE)
+
+
     def getFirstDialog(self):
         return scaleDB(self)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
-toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager', 
+toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager',
                               object=scaleForm(toolset),
                               kernelInitString='import scale',
                               author='Carl Osterwisch',
-                              version=str(__version__),
+                              version=__version__,
                               applicableModules=['Visualization'],
                               description='Configure legend scale.'
                               )

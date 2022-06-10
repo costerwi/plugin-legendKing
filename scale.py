@@ -1,39 +1,121 @@
-# $Id$
-
+from __future__ import print_function
 import os
 from xml.dom import minidom
-from abaqus import session, CANCEL
 from abaqusConstants import *
 
 xmldoc = None   # Settings in memory
 xmlFileName = '~/.legendScale.xml'  # Settings file name
-__version__ = 0.7 # Version of settings file format
+__version__ = 0.8 # Version of settings file format
+DEBUG = os.environ.has_key('DEBUG')
+
+
+def almostWhole(x, epsilon=1e-6):
+    """Determine if a number x is within epsilon of a whole number
+
+    >>> almostWhole(30.01, 0.1)
+    True
+    >>> almostWhole(30.01, 0.001)
+    False
+    """
+    rounded = round(x)
+    return (((rounded - epsilon) <= x) and ((rounded + epsilon) >= x))
+
+
+def significantDigits(x):
+    """Determine decimal places required to express x in fixed decimal
+
+    >>> significantDigits(30.01)
+    2
+    >>> significantDigits(30.0001)
+    4
+    """
+    x = abs(x)
+    digits = 0
+    if x > 0:
+        while x < 0.99 or not almostWhole(x, 1e-6):
+            x *= 10
+            digits += 1
+    return digits
+
+
+def linearScale(maxScale, minScale, guide=15):
+    """Find a reasonable set of ticks for given range
+
+    >>> linearScale(200, 0)
+    [0.0, 20.0, 40.0, 60.0, 80.0, 100.0, 120.0, 140.0, 160.0, 180.0]
+    >>> linearScale(10055, 1)
+    [1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0, 9000.0, 10000.0]
+    """
+    from math import floor, ceil, log10
+    span = maxScale - minScale
+    if span <= 0:
+        raise ValueError('span is 0')
+    order = 10.0**floor(log10(span))
+    delta = 5*order
+    for x in 2, 1, 0.50, 0.25, 0.20, 0.10, 0.05:
+        if span/(x*order) > guide:
+            break # too many ticks would be needed
+        delta = x*order
+    ticks = [ delta*(ceil(minScale/delta)) ] # starting tick
+    while ticks[-1] <= maxScale - delta:
+        ticks.append(ticks[0] + len(ticks)*delta)
+    if -0.1*delta < ticks[0] < delta:
+        ticks.pop(0)
+    if -delta < ticks[-1] < 0.1*delta:
+        ticks.pop()
+    return ticks
+
+
+def tickFormat(ticks):
+    """Find a reasonable format to display ticks
+
+    >>> tickFormat([1, 1.5, 2, 2.5])
+    (FIXED, 1)
+    >>> tickFormat([0, 100000, 200000])
+    (SCIENTIFIC, 0)
+    >>> tickFormat([0, 5.5e-8, 11e-8])
+    (SCIENTIFIC, 2)
+    """
+    from math import floor, ceil, log10
+    if len(ticks) < 2:
+        raise ValueError('less than 2 ticks')
+    delta = min([ticks[i + 1] - ticks[i] for i in range(len(ticks) - 1)])
+    if delta <= 0:
+        raise ValueError('nonpositive tick increment')
+    numDecimal = -1 * ceil(log10(delta)) # approximate exponent of delta
+    numDecimal += significantDigits(delta * 10**numDecimal)
+
+    span = ticks[-1] - ticks[0]
+    if span <= 1e-3 or span >= 1e5: # very small or very large; use scientific format
+        maxTick = max([abs(tick) for tick in ticks])
+        numDecimal += floor(log10(abs(maxTick))) # relative
+        numDecimal = min(max(numDecimal, 0), 9)
+        return SCIENTIFIC, int(numDecimal)
+
+    numDecimal = min(max(numDecimal, 0), 9)
+    return FIXED, int(numDecimal)
+
 
 def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
-        color1=None, color2=None):
+        color1=None, color2=None, maxExact=None, minExact=None):
     """Set the Abaqus/Viewer contour legend scale to even increments.
-    
-    Carl Osterwisch, 2006"""
-    import math
-    debug = os.environ.has_key('DEBUG')
 
-    viewport = session.viewports[vpName]
-    if 'contourOptions' in dir(viewport.odbDisplay):
+    Carl Osterwisch, 2006"""
+    import abaqus
+    import math
+
+    viewport = abaqus.session.viewports[vpName]
+    if hasattr(viewport.odbDisplay, 'contourOptions'):
         contourOptions = viewport.odbDisplay.contourOptions
         symbolOptions = viewport.odbDisplay.symbolOptions
-        
+        annotationOptions = viewport.viewportAnnotationOptions
+
         if minScale > maxScale:
             minScale, maxScale = maxScale, minScale # swap if necessary
-        if LOG == contourOptions.intervalType:
-            if minScale <= 0: # avoid numeric error
-                minScale = -12
-            else:
-                minScale = math.log10(minScale)
-            if maxScale <= 10**minScale: # keep maxScale > minScale
-                maxScale = minScale + 8
-            else:
-                maxScale = math.log10(maxScale)
+        elif minScale == maxScale:
+            raise ValueError('max scale == min scale')
 
+        # Load defaults
         if None == reverse and contourOptions.spectrum.startswith('Reversed'):
             reverse = True
         if None == color1:
@@ -41,79 +123,67 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
         if None == color2:
             color2 = contourOptions.outsideLimitsAboveColor
 
-        span = maxScale - minScale
-        order = 10.0**math.floor(math.log10(span))
-        tic = order*5
-        for x in [2, 1, 0.50, 0.25, 0.20, 0.10, 0.05]:
-            if span/(x*order) <= guide:
-                tic = x*order
-        minScale = tic*(math.ceil(minScale/tic))
-        maxScale = tic*(math.floor(maxScale/tic))
-        intervals = int((maxScale - minScale)/tic + 0.1)
-        
-        if contourOptions.outsideLimitsMode==SPECTRUM:
-            if maxScale < contourOptions.autoMaxValue:
-                intervals += 1
-            if minScale > contourOptions.autoMinValue:
-                intervals += 1
+        ticks = linearScale(maxScale, minScale, guide)
 
         if LOG == contourOptions.intervalType:
             minScale = 10**minScale
             maxScale = 10**maxScale
-        contourOptions.setValues(minValue = minScale, maxValue = maxScale,
+        contourOptions.setValues(
+                minValue = ticks[0], maxValue = ticks[-1],
                 minAutoCompute=OFF, maxAutoCompute=OFF,
-                numIntervals=intervals)
-        symbolOptions.setValues(vectorMinValue = minScale,
-                vectorMaxValue = maxScale,
+                numIntervals=len(ticks) - 1,
+                intervalType=UNIFORM,
+                )
+        symbolOptions.setValues(
+                vectorMinValue = ticks[0],
+                vectorMaxValue = ticks[-1],
                 vectorMinValueAutoCompute=OFF, vectorMaxValueAutoCompute=OFF,
-                vectorIntervalNumber=intervals,
-                tensorMinValue = minScale, tensorMaxValue = maxScale,
+                vectorIntervalNumber=len(ticks) - 1,
+                tensorMinValue = ticks[0],
+                tensorMaxValue = ticks[-1],
                 tensorMinValueAutoCompute=OFF, tensorMaxValueAutoCompute=OFF,
-                tensorIntervalNumber=intervals)
+                tensorIntervalNumber=len(ticks) - 1,
+                )
+        if minExact and minScale < ticks[0]:
+            ticks.insert(0, minScale)
+        if maxExact and maxScale > ticks[-1]:
+            ticks.append(maxScale)
+        if len(ticks) != contourOptions.numIntervals + 1:
+            contourOptions.setValues(
+                intervalType=USER_DEFINED,
+                intervalValues=ticks,
+                )
+        fmt, decPlaces = tickFormat(ticks)
+        annotationOptions.setValues(
+                legendNumberFormat=fmt,
+                legendDecimalPlaces=decPlaces,
+                )
+        if DEBUG:
+            print(maxScale, minScale, maxExact, minExact)
+            print(ticks, fmt, decPlaces)
 
         if reverse:
             contourOptions.setValues(
                 spectrum='Reversed rainbow',
-                outsideLimitsAboveColor=color1, 
+                outsideLimitsAboveColor=color1,
                 outsideLimitsBelowColor=color2)
             symbolOptions.setValues(
-                tensorColorSpectrum='Reversed rainbow', 
-                vectorColorSpectrum='Reversed rainbow') 
+                tensorColorSpectrum='Reversed rainbow',
+                vectorColorSpectrum='Reversed rainbow')
         else:
             contourOptions.setValues(
                 spectrum='Rainbow',
-                outsideLimitsAboveColor=color2, 
+                outsideLimitsAboveColor=color2,
                 outsideLimitsBelowColor=color1)
             symbolOptions.setValues(
-                tensorColorSpectrum='Rainbow', 
-                vectorColorSpectrum='Rainbow') 
-
-        annotationOptions = viewport.viewportAnnotationOptions
-        try:
-            if FIXED == annotationOptions.legendNumberFormat:
-                decPlaces = 0
-                ticStr = '%g'%tic
-                decIndex = ticStr.find('.')
-                if decIndex > 0:
-                    decPlaces = len(ticStr) - decIndex - 1
-                if debug:
-                    print repr(ticStr), len(ticStr), decIndex, decPlaces
-                annotationOptions.setValues(legendDecimalPlaces=decPlaces)
-            else:
-                if debug:
-                    print annotationOptions.legendNumberFormat, 'not FIXED'
-                annotationOptions.setValues(legendDecimalPlaces=3)
-        except NameError as e:
-            # Abaqus CAE version < 6.6
-            pass
-            if debug:
-                print 'NameError', e
-        return True
+                tensorColorSpectrum='Rainbow',
+                vectorColorSpectrum='Rainbow')
 
 
 def readXmlFile():
     "Read xmldoc or create a new xmldoc if necessary"
     global xmldoc
+    import abaqus
     if xmldoc:
         return  # Already read
     if os.path.exists(os.path.expanduser(xmlFileName)):
@@ -129,19 +199,22 @@ def readXmlFile():
     if not "legendScale" == fileType:
         return abaqus.getWarningReply(
                 '%r is not legendScale file format'%fileType,
-                (CANCEL, ))
+                (abaqus.CANCEL, ))
     xmldoc = doc
 
 
 def setValues(vpName, maxScale, minScale, guide, reverse=None,
-        color1=None, color2=None):
+        color1=None, color2=None, maxExact=None, minExact=None):
     "Set scale and save these settings for future recall"
 
-    if not setup_scale(vpName, maxScale, minScale, guide, reverse,
-            color1, color2):
+    import abaqus
+    try:
+        setup_scale(vpName, maxScale, minScale, guide, reverse,
+            color1, color2, maxExact, minExact)
+    except ValueError:
         return  # Skip the rest if error
     readXmlFile()
-    viewport = session.viewports[vpName]
+    viewport = abaqus.session.viewports[vpName]
     primaryVariable = viewport.odbDisplay.primaryVariable
     name = '_'.join((primaryVariable[0], primaryVariable[5])).lower()
     fo = xmldoc.getElementById(name)
@@ -166,9 +239,10 @@ def setValues(vpName, maxScale, minScale, guide, reverse=None,
             xmldoc.createTextNode(repr(color1)))
     fo.appendChild(xmldoc.createElement('color2')).appendChild(
             xmldoc.createTextNode(repr(color2)))
-    fo.appendChild(xmldoc.createElement('format')).appendChild(
-            xmldoc.createTextNode(repr(
-        viewport.viewportAnnotationOptions.legendNumberFormat)))
+    fo.appendChild(xmldoc.createElement('maxExact')).appendChild(
+            xmldoc.createTextNode(repr(maxExact)))
+    fo.appendChild(xmldoc.createElement('minExact')).appendChild(
+            xmldoc.createTextNode(repr(minExact)))
 
     # Save settings to disk
     open(os.path.expanduser(xmlFileName), 'w').write(xmldoc.toxml())
@@ -177,8 +251,9 @@ def setValues(vpName, maxScale, minScale, guide, reverse=None,
 def recall(vpName):
     "Read previous settings for this primaryVariable"
 
-    viewport = session.viewports[vpName]
-    if not 'contourOptions' in dir(viewport.odbDisplay):
+    import abaqus
+    viewport = abaqus.session.viewports[vpName]
+    if not hasattr(viewport.odbDisplay, 'contourOptions'):
         return
     readXmlFile()
     primaryVariable = viewport.odbDisplay.primaryVariable
@@ -197,29 +272,30 @@ def recall(vpName):
                 childNodes[0].data)
         color2 = eval(fo.getElementsByTagName("color2")[0].
                 childNodes[0].data)
-        fmt = eval(fo.getElementsByTagName("format")[0].
+        maxExact = eval(fo.getElementsByTagName("maxExact")[0].
                 childNodes[0].data)
-        viewport.viewportAnnotationOptions.setValues(
-                legendNumberFormat=fmt)
+        minExact = eval(fo.getElementsByTagName("minExact")[0].
+                childNodes[0].data)
         setup_scale(vpName, maxScale, minScale, guide, reverse,
-                color1, color2)
+                color1, color2, maxExact, minExact)
 
 
 def restore_defaults(vpName):
     """Set the contour legend scale to the default values."""
-    viewport = session.viewports[vpName]
-    if 'contourOptions' in dir(viewport.odbDisplay):
-        default = session.defaultOdbDisplay.contourOptions
+    import abaqus
+    viewport = abaqus.session.viewports[vpName]
+    if hasattr(viewport.odbDisplay, 'contourOptions'):
+        default = abaqus.session.defaultOdbDisplay.contourOptions
         viewport.odbDisplay.contourOptions.setValues(
                 minAutoCompute=default.minAutoCompute,
                 maxAutoCompute=default.maxAutoCompute,
                 intervalType=default.intervalType,
                 numIntervals=default.numIntervals,
                 spectrum=default.spectrum,
-                outsideLimitsAboveColor=default.outsideLimitsAboveColor, 
+                outsideLimitsAboveColor=default.outsideLimitsAboveColor,
                 outsideLimitsBelowColor=default.outsideLimitsBelowColor)
 
-        default = session.defaultOdbDisplay.symbolOptions
+        default = abaqus.session.defaultOdbDisplay.symbolOptions
         viewport.odbDisplay.symbolOptions.setValues(
                 vectorMinValueAutoCompute=default.vectorMinValueAutoCompute,
                 vectorMaxValueAutoCompute=default.vectorMaxValueAutoCompute,
@@ -229,3 +305,8 @@ def restore_defaults(vpName):
         viewport.viewportAnnotationOptions.setValues(   # TODO: read actual default values
                 legendNumberFormat=SCIENTIFIC,  # Not compatible with versions < 6.7
                 legendDecimalPlaces=3)
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
