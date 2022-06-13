@@ -5,7 +5,6 @@ from abaqusConstants import *
 
 settings = {}   # Settings in memory
 jsonFileName = os.path.expanduser('~/.legendScale.json') # Settings file name
-__version__ = 0.8 # Version of settings file format
 DEBUG = os.environ.has_key('DEBUG')
 
 
@@ -38,7 +37,7 @@ def significantDigits(x):
     return digits
 
 
-def linearScale(maxScale, minScale, guide=15):
+def linearScale(maxValue, minValue, guide=15):
     """Find a reasonable set of ticks for given range
 
     >>> linearScale(200, 0)
@@ -47,26 +46,26 @@ def linearScale(maxScale, minScale, guide=15):
     [1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0, 9000.0, 10000.0]
     """
     from math import floor, ceil, log10
-    span = maxScale - minScale
+    span = maxValue - minValue
     if span <= 0:
-        raise ValueError('span is 0')
-    order = 10.0**floor(log10(span))
+        raise ValueError('span is <= 0')
+    order = 10.0**int(floor(log10(span)))
     delta = 5*order
     for x in 2, 1, 0.50, 0.25, 0.20, 0.10, 0.05:
         if span/(x*order) > guide:
             break # too many ticks would be needed
         delta = x*order
-    ticks = [ delta*(ceil(minScale/delta)) ] # starting tick
-    while ticks[-1] <= maxScale - delta:
+    ticks = [ delta*int(ceil(minValue/delta)) ] # starting tick
+    while ticks[-1] < maxValue - 0.95*delta:
         ticks.append(ticks[0] + len(ticks)*delta)
-    if abs(ticks[0]) < 0.1*delta:
-        ticks.pop(0)
-    if abs(ticks[-1]) < 0.1*delta:
-        ticks.pop()
+    if abs(ticks[0]) < 0.05*delta: # fist tick is nearly 0
+        ticks.pop(0) # let CAE show minimum value as first tick
+    if abs(ticks[-1]) < 0.05*delta: # last tick is nearly 0
+        ticks.pop() # let CAE show maximum value as last tick
     return ticks
 
 
-def logScale(maxScale, minScale, guide=15):
+def logScale(maxValue, minValue, guide=15):
     """Find a reasonable set of ticks for given range
 
     >>> logScale(200, 0)
@@ -116,7 +115,7 @@ def tickFormat(ticks):
     return FIXED, int(numDecimal)
 
 
-def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
+def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
         maxExact=None, minExact=None, log=False):
     """Set the Abaqus/Viewer contour legend scale to even increments.
 
@@ -130,9 +129,10 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
         symbolOptions = viewport.odbDisplay.symbolOptions
         annotationOptions = viewport.viewportAnnotationOptions
 
-        if minScale > maxScale:
-            minScale, maxScale = maxScale, minScale # swap if necessary
-        elif minScale == maxScale:
+        if minValue > maxValue: # swap if necessary
+            minValue, maxValue = maxValue, minValue
+            minExact, maxExact = maxExact, minExact
+        elif minValue == maxValue:
             raise ValueError('max scale == min scale')
 
         # Load defaults
@@ -140,10 +140,10 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
             reverse = True
 
         if log:
-            ticks = logScale(maxScale, minScale, guide)
+            ticks = logScale(maxValue, minValue, guide)
             contourOptions.setValues(intervalType=LOG)
         else:
-            ticks = linearScale(maxScale, minScale, guide)
+            ticks = linearScale(maxValue, minValue, guide)
             contourOptions.setValues(intervalType=UNIFORM)
 
         contourOptions.setValues(
@@ -161,10 +161,10 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
                 tensorMinValueAutoCompute=OFF, tensorMaxValueAutoCompute=OFF,
                 tensorIntervalNumber=len(ticks) - 1,
                 )
-        if minExact and minScale < ticks[0]:
-            ticks.insert(0, minScale)
-        if maxExact and maxScale > ticks[-1]:
-            ticks.append(maxScale)
+        if minExact and minValue < ticks[0]:
+            ticks.insert(0, minValue)
+        if maxExact and maxValue > ticks[-1]:
+            ticks.append(maxValue)
         if len(ticks) != contourOptions.numIntervals + 1:
             contourOptions.setValues(
                 intervalType=USER_DEFINED,
@@ -182,7 +182,7 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
             print(maxScale, minScale, maxExact, minExact)
             print(ticks, fmt, decPlaces)
 
-        if minScale*maxScale >= 0:
+        if minValue*maxValue >= 0:
             color1 = 'Grey80'
         else:
             color1 = '#000080' # dark blue
@@ -224,13 +224,13 @@ def readSettings():
         })
 
 
-def setValues(vpName, maxScale, minScale, guide, reverse=None,
+def setValues(vpName, maxValue, minValue, guide, reverse=None,
         maxExact=None, minExact=None, log=False):
     "Set scale and save these settings for future recall"
 
     import abaqus
     try:
-        setup_scale(vpName, maxScale, minScale, guide, reverse,
+        setup_scale(vpName, maxValue, minValue, guide, reverse,
             maxExact, minExact, log==LOG)
     except ValueError as e:
         if DEBUG:
@@ -240,8 +240,8 @@ def setValues(vpName, maxScale, minScale, guide, reverse=None,
     primaryVariable = viewport.odbDisplay.primaryVariable
     name = ' '.join((primaryVariable[0], primaryVariable[5])).strip()
     settings[name] = {
-            'maxScale': maxScale,
-            'minScale': minScale,
+            'maxValue': maxValue,
+            'minValue': minValue,
             'guide': guide,
             'reverse': bool(reverse),
             'maxExact': bool(maxExact),

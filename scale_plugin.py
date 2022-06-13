@@ -1,7 +1,6 @@
 """Define the AFXForm class to handle scale dialog box events.
 
-Carl Osterwisch <carl.osterwisch@avlna.com> October 2006
-$Id$
+Carl Osterwisch, October 2006
 """
 
 __version__ = '0.9.0'
@@ -74,8 +73,8 @@ class scaleDB(AFXDataDialog):
                 tgt=form.reverseKw)
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
-        FXRadioButton(buttonframe, 'Linear Ticks', form.logKw, LINEAR.getId())
-        FXRadioButton(buttonframe, 'Log', form.logKw, LOG.getId())
+        FXRadioButton(buttonframe, 'Linear', form.logKw, LINEAR.getId())
+        FXRadioButton(buttonframe, 'Log Scale', form.logKw, LOG.getId())
 
         guide = AFXSlider(p=mainframe, tgt=form.guideKw,
                 opts=AFXSLIDER_HORIZONTAL | AFXSLIDER_INSIDE_BAR | LAYOUT_FILL_X)
@@ -176,12 +175,12 @@ class scaleForm(AFXForm):
                 registerQuery=FALSE)
 
         self.maxKw = AFXFloatKeyword(command=setup_scale,
-                name='maxScale',
+                name='maxValue',
                 isRequired=TRUE,
                 defaultValue=100.)
 
         self.minKw = AFXFloatKeyword(command=setup_scale,
-                name='minScale',
+                name='minValue',
                 isRequired=TRUE,
                 defaultValue=0.)
 
@@ -230,9 +229,3 @@ toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager',
                               description='Configure legend scale.'
                               )
 
-# Version 0.2, August 2007: Added color buttons
-# Version 0.3, May 2008: Added defaults button
-# Version 0.4, July 2008: Added format box, removed max/min
-# Version 0.5, December 2008: Changed default to FIXED
-# Version 0.6, September 2010: Better checking for odb in display, better reset
-# Version 0.7, April 2012: Save setings for each primary variable
