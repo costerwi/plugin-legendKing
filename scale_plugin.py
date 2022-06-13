@@ -69,14 +69,12 @@ class scaleDB(AFXDataDialog):
                 tgt=form.minExactKw)
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
-        AFXColorButton(p=buttonframe, text='Colors', tgt=form.color1Kw)
-        AFXColorButton(p=buttonframe, text='', tgt=form.color2Kw)
         FXCheckButton(p=buttonframe,
-                text='Reverse',
+                text='Reverse Rainbow',
                 tgt=form.reverseKw)
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
-        FXRadioButton(buttonframe, 'Ticks Linear', form.logKw, LINEAR.getId())
+        FXRadioButton(buttonframe, 'Linear Ticks', form.logKw, LINEAR.getId())
         FXRadioButton(buttonframe, 'Log', form.logKw, LOG.getId())
 
         guide = AFXSlider(p=mainframe, tgt=form.guideKw,
@@ -200,16 +198,6 @@ class scaleForm(AFXForm):
                 name='vpName',
                 isRequired=TRUE,
                 defaultValue=None)
-
-        self.color1Kw = AFXStringKeyword(command=setup_scale,
-                name='color1',
-                isRequired=TRUE,
-                defaultValue='Grey80')
-
-        self.color2Kw = AFXStringKeyword(command=setup_scale,
-                name='color2',
-                isRequired=TRUE,
-                defaultValue='#800000')
 
         self.maxExactKw = AFXBoolKeyword(command=setup_scale,
                 name='maxExact',

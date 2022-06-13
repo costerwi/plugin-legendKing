@@ -117,7 +117,7 @@ def tickFormat(ticks):
 
 
 def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
-        color1=None, color2=None, maxExact=None, minExact=None, log=False):
+        maxExact=None, minExact=None, log=False):
     """Set the Abaqus/Viewer contour legend scale to even increments.
 
     Carl Osterwisch, 2006"""
@@ -138,10 +138,6 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
         # Load defaults
         if None == reverse and contourOptions.spectrum.startswith('Reversed'):
             reverse = True
-        if None == color1:
-            color1 = contourOptions.outsideLimitsBelowColor
-        if None == color2:
-            color2 = contourOptions.outsideLimitsAboveColor
 
         if log:
             ticks = logScale(maxScale, minScale, guide)
@@ -186,19 +182,25 @@ def setup_scale(vpName, maxScale, minScale, guide, reverse=None,
             print(maxScale, minScale, maxExact, minExact)
             print(ticks, fmt, decPlaces)
 
+        if minScale*maxScale >= 0:
+            color1 = 'Grey80'
+        else:
+            color1 = '#000080' # dark blue
+        color2 = '#800000' # dark red
+
         if reverse:
             contourOptions.setValues(
                 spectrum='Reversed rainbow',
-                outsideLimitsAboveColor=str(color1),
-                outsideLimitsBelowColor=str(color2))
+                outsideLimitsAboveColor=color1,
+                outsideLimitsBelowColor=color2)
             symbolOptions.setValues(
                 tensorColorSpectrum='Reversed rainbow',
                 vectorColorSpectrum='Reversed rainbow')
         else:
             contourOptions.setValues(
                 spectrum='Rainbow',
-                outsideLimitsAboveColor=str(color2),
-                outsideLimitsBelowColor=str(color1))
+                outsideLimitsAboveColor=color2,
+                outsideLimitsBelowColor=color1)
             symbolOptions.setValues(
                 tensorColorSpectrum='Rainbow',
                 vectorColorSpectrum='Rainbow')
@@ -223,13 +225,13 @@ def readSettings():
 
 
 def setValues(vpName, maxScale, minScale, guide, reverse=None,
-        color1=None, color2=None, maxExact=None, minExact=None, log=False):
+        maxExact=None, minExact=None, log=False):
     "Set scale and save these settings for future recall"
 
     import abaqus
     try:
         setup_scale(vpName, maxScale, minScale, guide, reverse,
-            color1, color2, maxExact, minExact, log==LOG)
+            maxExact, minExact, log==LOG)
     except ValueError as e:
         if DEBUG:
             print(e)
@@ -242,8 +244,6 @@ def setValues(vpName, maxScale, minScale, guide, reverse=None,
             'minScale': minScale,
             'guide': guide,
             'reverse': bool(reverse),
-            'color1': color1,
-            'color2': color2,
             'maxExact': bool(maxExact),
             'minExact': bool(minExact),
             'log': log==LOG,
