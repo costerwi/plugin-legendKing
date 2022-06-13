@@ -37,7 +37,7 @@ class scaleDB(AFXDataDialog):
 
     def __init__(self, form):
         # Construct the base class.
-        AFXDataDialog.__init__(self, form, "Legend Scale Manager",
+        AFXDataDialog.__init__(self, form, "Legend King",
                 self.APPLY, DIALOG_NORMAL)
 
         self.appendActionButton(text='Reset', tgt=self, sel=self.ID_DEFAULTS)
@@ -220,12 +220,13 @@ class scaleForm(AFXForm):
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
-toolset.registerGuiMenuButton(buttonText='&Legend Scale Manager',
-                              object=scaleForm(toolset),
-                              kernelInitString='import scale',
-                              author='Carl Osterwisch',
-                              version=__version__,
-                              applicableModules=['Visualization'],
-                              description='Configure legend scale.'
-                              )
-
+toolset.registerGuiMenuButton(
+        buttonText='&Legend King',
+        object=scaleForm(toolset),
+        kernelInitString='import scale',
+        author='Carl Osterwisch',
+        version=__version__,
+        applicableModules=['Visualization'],
+        description='Setup a reasonable legend scale quick and easy.',
+        helpUrl='https://github.com/costerwi/plugin-legendKing',
+        )

@@ -178,7 +178,7 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
                 legendDecimalPlaces=decPlaces,
                 )
         if DEBUG:
-            print(maxScale, minScale, maxExact, minExact)
+            print(maxValue, minValue, maxExact, minExact)
             print(ticks, fmt, decPlaces)
 
         if minValue*maxValue >= 0:

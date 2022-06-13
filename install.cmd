@@ -1,6 +1,6 @@
 @echo off
 
-set plugin=legendScale
+set plugin=legendKing
 
 if defined HOME (
     set abaqus_plugins=%HOME%\abaqus_plugins
@@ -28,6 +28,7 @@ copy /Y "%~dp0\*.*" "%destination%"
 if ERRORLEVEL 0 (
     echo Success! Restart Abaqus CAE and check Plugin-ins menu.
 ) else (
-    echo Something went wrong. Contact support@caelynx.com
+    echo Something went wrong.
+    echo Create an issue on https://github.com/costerwi/plugin-legendKing/issues
 )
 pause
