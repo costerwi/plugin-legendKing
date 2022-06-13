@@ -75,6 +75,10 @@ class scaleDB(AFXDataDialog):
                 text='Reverse',
                 tgt=form.reverseKw)
 
+        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
+        FXRadioButton(buttonframe, 'Ticks Linear', form.logKw, LINEAR.getId())
+        FXRadioButton(buttonframe, 'Log', form.logKw, LOG.getId())
+
         guide = AFXSlider(p=mainframe, tgt=form.guideKw,
                 opts=AFXSLIDER_HORIZONTAL | AFXSLIDER_INSIDE_BAR | LAYOUT_FILL_X)
         guide.setRange(3, 24)
@@ -215,6 +219,11 @@ class scaleForm(AFXForm):
         self.minExactKw = AFXBoolKeyword(command=setup_scale,
                 name='minExact',
                 defaultValue=OFF,
+                isRequired=TRUE)
+
+        self.logKw = AFXSymConstKeyword(command=setup_scale,
+                name='log',
+                defaultValue=LINEAR.getId(),
                 isRequired=TRUE)
 
 
