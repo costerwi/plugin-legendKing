@@ -4,7 +4,7 @@ import json
 from abaqusConstants import *
 
 settings = {}   # Settings in memory
-jsonFileName = os.path.expanduser('~/.legendScale.json') # Settings file name
+jsonFileName = os.path.expanduser('~/.legendKing.json') # Settings file name
 DEBUG = os.environ.has_key('DEBUG')
 
 

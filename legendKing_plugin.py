@@ -132,7 +132,7 @@ class scaleDB(AFXDataDialog):
             return
         if self.primaryVariable != self.odbDisplay.primaryVariable:
             self.primaryVariable = self.odbDisplay.primaryVariable
-            sendCommand("scale.recall(%r)"%self.vpNameKw.getValue())
+            sendCommand("legendKing.recall(%r)"%self.vpNameKw.getValue())
 
     def onContourChanged(self):
         minmax = (self.contourOptions.autoMinValue,
@@ -155,7 +155,7 @@ class scaleDB(AFXDataDialog):
 
     def onDefaults(self, sender, sel, ptr):
         "User requested return to default settings."
-        sendCommand("scale.restore_defaults(%r)"%self.vpNameKw.getValue())
+        sendCommand("legendKing.restore_defaults(%r)"%self.vpNameKw.getValue())
         return 1
 
 ###########################################################################
@@ -171,7 +171,7 @@ class scaleForm(AFXForm):
         # setup_scale kernel command
         setup_scale = AFXGuiCommand(mode=self,
                 method='setValues',
-                objectName='scale',
+                objectName='legendKing',
                 registerQuery=FALSE)
 
         self.maxKw = AFXFloatKeyword(command=setup_scale,
@@ -223,7 +223,7 @@ toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 toolset.registerGuiMenuButton(
         buttonText='&Legend King',
         object=scaleForm(toolset),
-        kernelInitString='import scale',
+        kernelInitString='import legendKing',
         author='Carl Osterwisch',
         version=__version__,
         applicableModules=['Visualization'],
