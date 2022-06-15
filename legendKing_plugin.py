@@ -3,7 +3,7 @@
 Carl Osterwisch, October 2006
 """
 
-__version__ = '0.10.0'
+__version__ = '0.10.1'
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -101,30 +101,32 @@ class scaleDB(AFXDataDialog):
         AFXDataDialog.hide(self)
 
     def onSessionChanged(self):
-        if session.currentViewportName != self.vpNameKw.getValue():
-            # If the current viewport changes then the contourQuery needs
-            # to be updated.
-            viewport = session.viewports[session.currentViewportName]
-            self.vpNameKw.setValue(viewport.name)
-            if hasattr(viewport.displayedObject, 'steps'):
-                # Seems to be an odb display
-                plotState = viewport.odbDisplay.display.plotState
-                self.odbDisplay = viewport.odbDisplay
-                self.contourOptions = viewport.odbDisplay.contourOptions
-                self.symbolOptions = viewport.odbDisplay.symbolOptions
-                self.variableQuery = myQuery(viewport.odbDisplay,
-                        self.onDisplayChanged)
-                if SYMBOLS_ON_DEF in plotState or SYMBOLS_ON_UNDEF in plotState:
-                    # Symbol plot
-                    self.minmaxQuery = myQuery(self.symbolOptions,
-                        self.onSymbolChanged)
-                else:
-                    # Assume contour plot
-                    self.minmaxQuery = myQuery(self.contourOptions,
-                        self.onContourChanged)
+        if session.currentViewportName == self.vpNameKw.getValue():
+            return
+        # If the current viewport changes then the contourQuery needs
+        # to be updated.
+        viewport = session.viewports[session.currentViewportName]
+        self.vpNameKw.setValue(viewport.name)
+        if hasattr(viewport.displayedObject, 'steps'):
+            # Seems to be an odb display
+            plotState = viewport.odbDisplay.display.plotState
+            self.odbDisplay = viewport.odbDisplay
+            self.contourOptions = viewport.odbDisplay.contourOptions
+            self.symbolOptions = viewport.odbDisplay.symbolOptions
+            self.primaryVariable = '' # force an update
+            self.variableQuery = myQuery(viewport.odbDisplay,
+                    self.onDisplayChanged)
+            if SYMBOLS_ON_DEF in plotState or SYMBOLS_ON_UNDEF in plotState:
+                # Symbol plot
+                self.minmaxQuery = myQuery(self.symbolOptions,
+                    self.onSymbolChanged)
             else:
-                # Other display object (xyplot, etc)
-                self.minmaxQuery = None
+                # Assume contour plot
+                self.minmaxQuery = myQuery(self.contourOptions,
+                    self.onContourChanged)
+        else:
+            # Other display object (xyplot, etc)
+            self.minmaxQuery = None
 
     def onDisplayChanged(self):
         "Changed odbDisplay; recall previous settings"
@@ -135,22 +137,23 @@ class scaleDB(AFXDataDialog):
             sendCommand("legendKing.recall(%r)"%self.vpNameKw.getValue())
 
     def onContourChanged(self):
+        "Set GUI TextField to current min min"
         minmax = (self.contourOptions.autoMinValue,
                 self.contourOptions.autoMaxValue)
         if minmax != self.minmax and isinstance(minmax[0], float):
-            inc = (minmax[1] - minmax[0])/10
             if self.min.getTarget():
                 self.min.getTarget().setValue(minmax[0])
                 self.max.getTarget().setValue(minmax[1])
             self.minmax = minmax
 
     def onSymbolChanged(self):
+        "Set GUI TextField to current min min"
         minmax = (self.symbolOptions.autoVectorMinValue,
                 self.symbolOptions.autoVectorMaxValue)
         if minmax != self.minmax and isinstance(minmax[0], float):
-            inc = (minmax[1] - minmax[0])/10
-            self.min.getTarget().setValue(minmax[0])
-            self.max.getTarget().setValue(minmax[1])
+            if self.min.getTarget():
+                self.min.getTarget().setValue(minmax[0])
+                self.max.getTarget().setValue(minmax[1])
             self.minmax = minmax
 
     def onDefaults(self, sender, sel, ptr):
