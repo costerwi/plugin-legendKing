@@ -1,3 +1,4 @@
+# coding: utf-8
 """Define the AFXForm class to handle scale dialog box events.
 
 Carl Osterwisch, October 2006
@@ -69,17 +70,17 @@ class scaleDB(AFXDataDialog):
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         FXCheckButton(p=buttonframe,
-                text='Reverse Rainbow',
+                text='Reverse color map',
                 tgt=form.reverseKw)
         
         # Adding in a combo-box for cmap selection
         self.colormap = AFXComboBox(mainframe,0,4,'Color Map:',
                                tgt=form.colormapKw,
                                opts=LAYOUT_FILL_X)
-        self.colormap.appendItem('rainbow')
-        self.colormap.appendItem('symmetric')
-        self.colormap.appendItem('cbs-cool')
-        self.colormap.appendItem('cbs-warm')
+        self.colormap.appendItem('Rainbow')
+        self.colormap.appendItem('Symmetric')
+        #self.colormap.appendItem('Cbs-cool')
+        #self.colormap.appendItem('Cbs-warm')
         
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         FXRadioButton(buttonframe, 'Linear', form.logKw, LINEAR.getId())
@@ -227,7 +228,7 @@ class scaleForm(AFXForm):
         
         self.colormapKw = AFXStringKeyword(command=setup_scale,
                 name='colormap',
-                defaultValue='rainbow',
+                defaultValue='Rainbow',
                 isRequired=TRUE)
 
 

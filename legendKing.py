@@ -1,3 +1,4 @@
+# coding: utf-8
 from __future__ import print_function, with_statement
 import os
 import json
@@ -82,7 +83,7 @@ def logScale(maxValue, minValue, guide=15):
     return ticks
 
 
-def tickFormat(ticks):
+def tickFormat(ticks,colormap):
     """Find a reasonable format to display ticks
 
     >>> tickFormat([1, 1.5, 2, 2.5])
@@ -93,10 +94,12 @@ def tickFormat(ticks):
     (SCIENTIFIC, 2)
     """
     from math import floor, ceil, log10
+    
     if len(ticks) < 2:
         raise ValueError('less than 2 ticks')
     delta = min([ticks[i + 1] - ticks[i] for i in range(len(ticks) - 1)])
     if delta <= 0:
+        print(ticks)
         raise ValueError('nonpositive tick increment')
     numDecimal = -1 * ceil(log10(delta)) # approximate exponent of delta
     numDecimal += significantDigits(delta * 10**numDecimal)
@@ -104,17 +107,21 @@ def tickFormat(ticks):
     minOrder = min([log10(abs(i)) for i in ticks if abs(i) > 0.1*delta])
     maxOrder = max([log10(abs(i)) for i in ticks if abs(i) > 0.1*delta])
 
-    if maxOrder > 5 or minOrder < -3: # very large or small
+    # (TS) Symmetric distribution kind of breaks this logic
+    if maxOrder > 5 or minOrder < -3 and colormap != 'Symmetric': # very large or small
         maxTick = max([abs(tick) for tick in ticks])
         numDecimal += floor(log10(abs(maxTick))) # relative
         numDecimal = min(max(numDecimal, 0), 9)
         return SCIENTIFIC, int(numDecimal)
-
+    
     numDecimal = min(max(numDecimal, 0), 9)
+    #(TS) need to pull that median tick value and make sure we have enough decimal points to rpresent
+    if colormap=='Symmetric' and numDecimal == 0:
+        numDecimal += 1  #guarantee at least one decimal point
     return FIXED, int(numDecimal)
 
 
-def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
+def setup_scale(vpName, maxValue, minValue, guide, reverse=None,colormap=None,
         maxExact=None, minExact=None, log=False):
     """Set the Abaqus/Viewer contour legend scale to even increments.
 
@@ -133,10 +140,18 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
             minExact, maxExact = maxExact, minExact
         elif minValue == maxValue:
             raise ValueError('max scale == min scale')
+        # (TS)
+        elif colormap == 'Symmetric':  #Symmetric about 0
+            minValue = -1*maxValue
 
         # Load defaults
-        if None == reverse and contourOptions.spectrum.startswith('Reversed'):
+        if reverse == None and contourOptions.spectrum.startswith('Reversed'):
             reverse = True
+    
+         # (TS)
+        if colormap == 'Symmetric':
+            if guide % 2 == 0: #we have an even number; incompatible w/ Symmetric distribution
+                guide += 1
 
         if log:
             ticks = logScale(maxValue, minValue, guide)
@@ -169,10 +184,28 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
                 intervalType=USER_DEFINED,
                 intervalValues=ticks,
                 )
+         # (TS)
+        if colormap == 'Symmetric':
+            median_tick_index = len(ticks) // 2 # e.g. len(ticks) = 15 .: 15 // 2 = 7
+            positive_small_num = ticks[median_tick_index + 1] * .01 #number slightly larger
+            negative_small_num = ticks[median_tick_index - 1] * .01
+            
+            ticks.insert(median_tick_index, negative_small_num)
+            ticks.insert(median_tick_index+2, positive_small_num) #need to add 2 to account for negative_small_num in list
+            ticks.pop(median_tick_index+1)  
+            
+            contourOptions.setValues(
+                intervalType=USER_DEFINED,
+                intervalValues=ticks,
+                )
+                
+        create_cmap(colormap, reverse, len(ticks))
+        #else: #for all cases other than symmetric, we'll use a different function
+        #    create_cmap(colormap,reverse,len(ticks))
         if log:
             fmt, decPlaces = SCIENTIFIC, 1
         else:
-            fmt, decPlaces = tickFormat(ticks)
+            fmt, decPlaces = tickFormat(ticks,colormap)
         annotationOptions.setValues(
                 legendNumberFormat=fmt,
                 legendDecimalPlaces=decPlaces,
@@ -181,40 +214,119 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
             print(maxValue, minValue, maxExact, minExact)
             print(ticks, fmt, decPlaces)
 
-        if minValue*maxValue >= 0:
-            color1 = 'Grey80'
-        else:
-            color1 = '#000080' # dark blue
-        color2 = '#800000' # dark red
+        
+        # (TS) Color Extremes declaration zone
+        if colormap == 'Rainbow':
+            if minValue*maxValue >= 0 and reverse != True:
+                color1 = 'Grey80'
+            else:
+                color1 = '#000080' # dark blue
+            color2 = '#800000' # dark red
+            
+        elif colormap == 'Symmetric':
+            color2 = '#800000' # dark red
+            color1 = '#000080' # dark blue    
 
-        if reverse:
-            contourOptions.setValues(
-                spectrum='Reversed rainbow',
-                outsideLimitsAboveColor=color1,
-                outsideLimitsBelowColor=color2)
-            symbolOptions.setValues(
-                tensorColorSpectrum='Reversed rainbow',
-                vectorColorSpectrum='Reversed rainbow')
-        else:
-            contourOptions.setValues(
-                spectrum='Rainbow',
-                outsideLimitsAboveColor=color2,
-                outsideLimitsBelowColor=color1)
-            symbolOptions.setValues(
-                tensorColorSpectrum='Rainbow',
-                vectorColorSpectrum='Rainbow')
+        #print(reverse)
+        if reverse: 
+            color1 , color2 = color2, color1
+            
+        # (TS) Reversed Rainbow corner-case
+        colormap_name = colormap 
+        if colormap == 'Rainbow' and reverse == True:
+            colormap_name = 'Reversed rainbow'
+        
+        
+        # (TS) Activate Colormap
+        contourOptions.setValues(
+                        spectrum=colormap_name, 
+                        outsideLimitsAboveColor=color2,
+                        outsideLimitsBelowColor=color1)
+        symbolOptions.setValues(
+                        tensorColorSpectrum=colormap_name,
+                        vectorColorSpectrum=colormap_name)
+                        
+        # if reverse:   
+        #     contourOptions.setValues(
+        #         spectrum='Reversed rainbow',
+        #         outsideLimitsAboveColor=color1,
+        #         outsideLimitsBelowColor=color2)
+        #     symbolOptions.setValues(
+        #         tensorColorSpectrum='Reversed rainbow',
+        #         vectorColorSpectrum='Reversed rainbow')
+        # else:
+        #     contourOptions.setValues(
+        #         spectrum='Rainbow',
+        #         outsideLimitsAboveColor=color2,
+        #         outsideLimitsBelowColor=color1)
+        #     symbolOptions.setValues(
+        #         tensorColorSpectrum='Rainbow',
+        #         vectorColorSpectrum='Rainbow')
 
-def create_cmap(ticks):
-    "given the input ticks, generate a user-defined cmap"
+# (TS)
+def create_cmap(colormap,reverse,N):
+    "generate the cmap according to the user-selection for non-Rainbow colors"
+    
+    import abaqus
+    "STEP 1: Determine bounding colors"
+    if colormap == 'Rainbow':
+        return
+        # color1= '#000080' # dark blue
+        # color2= '#800000' # dark red
+    
+    elif colormap == 'Symmetric':
+        color1_ext = (240,100,50) #00007F Darkest Blue
+        color1_mid = (220,40,100) #99BAFF Lightest Blue
+        color2_mid = (20, 40, 100)#FFBB99 Lightest red
+        color2_ext = (0, 100, 50) #7F0000 Darkest Red
+        
+    "STEP 2: Check if the color map needs reversed"
+    if (reverse == True) and colormap == 'Symmetric':
+        color1_ext, color2_ext = color2_ext, color1_ext #Darkest swap w/ Darkest
+        color1_mid, color2_mid = color2_mid, color1_mid #Lightest swap w/ Lightest
 
-def generate_interpolated_hex_table(color_1, color_2):
+    elif (reverse == True) and colormap != 'Symmetric': #pull a quick swap there
+        color1, color2 = color2, color1
+    
+    
+    "STEP 3: Create interpolated list of hex colors between bounding colors"
+    if colormap == 'Symmetric':
+        bot_colors = generate_interpolated_hex_table(color1_ext,color1_mid,N)
+        top_colors = generate_interpolated_hex_table(color2_mid,color2_ext,N)
+        bot_colors.append('Grey80') #central pivot point should be grey
+        bot_colors.extend( top_colors ) #merge the two lists
+        
+        hex_colors = bot_colors
+    elif colormap == 'Rainbow':
+        hex_colors = generate_interpolated_hex_table(color1, color2, N)
+        
+    "STEP 3: Create the session spectrum object with name associated with user choice earlier"
+    if colormap in ['Symmetric','Cbs-cool','Cbs-warm']:
+        abaqus.session.Spectrum( name=colormap, colors=hex_colors)
+    
+# (TS) 
+def generate_interpolated_hex_table(color1, color2, N):
     """
     Pass this function 2 colors and it'll linearly ramp HSV values between the two
     >> No guarantee that this is isochromatic
     """
     import colorsys
-
-
+    import numpy as np
+    Hvals = np.linspace(color1[0],color2[0],N)
+    Svals = np.linspace(color1[1],color2[1],N)
+    Vvals = np.linspace(color1[2],color2[2],N)
+    
+    HSV_table = np.ones((N,3))*np.nan
+    HSV_table[:,0] = Hvals
+    HSV_table[:,1] = Svals
+    HSV_table[:,2] = Vvals
+    
+    hex_colors = ['#{:02x}{:02x}{:02x}'.format(
+            int(255 * colorsys.hsv_to_rgb(h/360, s/100, v/100)[0]),
+            int(255 * colorsys.hsv_to_rgb(h/360, s/100, v/100)[1]),
+            int(255 * colorsys.hsv_to_rgb(h/360, s/100, v/100)[2]))
+            for h, s, v in HSV_table]   #ungodly list comprehension
+    return list(hex_colors)
 
 
 def readSettings():
@@ -235,13 +347,13 @@ def readSettings():
         })
 
 
-def setValues(vpName, maxValue, minValue, guide, reverse=None,
+def setValues(vpName, maxValue, minValue, guide, reverse=None,colormap=None,
         maxExact=None, minExact=None, log=False):
     "Set scale and save these settings for future recall"
 
     import abaqus
     try:
-        setup_scale(vpName, maxValue, minValue, guide, reverse,
+        setup_scale(vpName, maxValue, minValue, guide, reverse,colormap,
             maxExact, minExact, log==LOG)
     except ValueError as e:
         if DEBUG:
@@ -257,6 +369,7 @@ def setValues(vpName, maxValue, minValue, guide, reverse=None,
             'reverse': bool(reverse),
             'maxExact': bool(maxExact),
             'minExact': bool(minExact),
+            'colormap':colormap,
             'log': log==LOG,
         }
 
