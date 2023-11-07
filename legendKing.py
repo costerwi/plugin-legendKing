@@ -204,6 +204,18 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
                 tensorColorSpectrum='Rainbow',
                 vectorColorSpectrum='Rainbow')
 
+def create_cmap(ticks):
+    "given the input ticks, generate a user-defined cmap"
+
+def generate_interpolated_hex_table(color_1, color_2):
+    """
+    Pass this function 2 colors and it'll linearly ramp HSV values between the two
+    >> No guarantee that this is isochromatic
+    """
+    import colorsys
+
+
+
 
 def readSettings():
     "Read settings file or create a new settings if necessary"

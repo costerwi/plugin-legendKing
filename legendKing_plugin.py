@@ -3,7 +3,7 @@
 Carl Osterwisch, October 2006
 """
 
-__version__ = '0.10.1'
+__version__ = '0.10.2'
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -71,7 +71,16 @@ class scaleDB(AFXDataDialog):
         FXCheckButton(p=buttonframe,
                 text='Reverse Rainbow',
                 tgt=form.reverseKw)
-
+        
+        # Adding in a combo-box for cmap selection
+        self.colormap = AFXComboBox(mainframe,0,4,'Color Map:',
+                               tgt=form.colormapKw,
+                               opts=LAYOUT_FILL_X)
+        self.colormap.appendItem('rainbow')
+        self.colormap.appendItem('symmetric')
+        self.colormap.appendItem('cbs-cool')
+        self.colormap.appendItem('cbs-warm')
+        
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         FXRadioButton(buttonframe, 'Linear', form.logKw, LINEAR.getId())
         FXRadioButton(buttonframe, 'Log Scale', form.logKw, LOG.getId())
@@ -214,6 +223,11 @@ class scaleForm(AFXForm):
         self.logKw = AFXSymConstKeyword(command=setup_scale,
                 name='log',
                 defaultValue=LINEAR.getId(),
+                isRequired=TRUE)
+        
+        self.colormapKw = AFXStringKeyword(command=setup_scale,
+                name='colormap',
+                defaultValue='rainbow',
                 isRequired=TRUE)
 
 
