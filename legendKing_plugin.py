@@ -58,13 +58,13 @@ class scaleDB(AFXDataDialog):
                 text='Exactly',
                 tgt=form.maxExactKw)
 
-        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
-        self.min = AFXTextField(p=buttonframe,
+        self.minButtonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
+        self.min = AFXTextField(p=self.minButtonframe,
                 ncols=6,
                 labelText='Min',
                 tgt=form.minKw,
                 opts=LAYOUT_FILL_X | AFXTEXTFIELD_FLOAT)
-        FXCheckButton(p=buttonframe,
+        FXCheckButton(p=self.minButtonframe,
                 text='Exactly',
                 tgt=form.minExactKw)
 
@@ -79,8 +79,10 @@ class scaleDB(AFXDataDialog):
                                opts=LAYOUT_FILL_X)
         self.colormap.appendItem('Rainbow')
         self.colormap.appendItem('Symmetric')
-        #self.colormap.appendItem('Cbs-cool')
-        #self.colormap.appendItem('Cbs-warm')
+        self.colormap.appendItem('Viridis')
+        self.colormap.appendItem('Plasma')
+        # self.colormap.appendItem('Cbs-cool')
+        # self.colormap.appendItem('Cbs-warm')
         
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         FXRadioButton(buttonframe, 'Linear', form.logKw, LINEAR.getId())
@@ -137,7 +139,7 @@ class scaleDB(AFXDataDialog):
         else:
             # Other display object (xyplot, etc)
             self.minmaxQuery = None
-
+        
     def onDisplayChanged(self):
         "Changed odbDisplay; recall previous settings"
         if not hasattr(self.odbDisplay, 'primaryVariable'):

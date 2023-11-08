@@ -3,6 +3,8 @@ from __future__ import print_function, with_statement
 import os
 import json
 from abaqusConstants import *
+import matplotlib
+from matplotlib import cm
 
 settings = {}   # Settings in memory
 jsonFileName = os.path.expanduser('~/.legendKing.json') # Settings file name
@@ -184,8 +186,9 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,colormap=None,
                 intervalType=USER_DEFINED,
                 intervalValues=ticks,
                 )
+                
          # (TS)
-        if colormap == 'Symmetric':
+        if colormap == 'Symmetric':  #create small near-zero bin for symmetric cmap
             median_tick_index = len(ticks) // 2 # e.g. len(ticks) = 15 .: 15 // 2 = 7
             positive_small_num = ticks[median_tick_index + 1] * .01 #number slightly larger
             negative_small_num = ticks[median_tick_index - 1] * .01
@@ -200,8 +203,7 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,colormap=None,
                 )
                 
         create_cmap(colormap, reverse, len(ticks))
-        #else: #for all cases other than symmetric, we'll use a different function
-        #    create_cmap(colormap,reverse,len(ticks))
+        
         if log:
             fmt, decPlaces = SCIENTIFIC, 1
         else:
@@ -217,17 +219,29 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,colormap=None,
         
         # (TS) Color Extremes declaration zone
         if colormap == 'Rainbow':
-            if minValue*maxValue >= 0 and reverse != True:
-                color1 = 'Grey80'
-            else:
-                color1 = '#000080' # dark blue
+            color1 = '#000080' # dark blue
             color2 = '#800000' # dark red
             
         elif colormap == 'Symmetric':
             color2 = '#800000' # dark red
-            color1 = '#000080' # dark blue    
-
-        #print(reverse)
+            color1 = '#000080' # dark blue
+        # elif colormap == 'Cbs-cool':
+        #     color2 = '#084081' # max extreme, 
+        #     color1 = '#F7FCF0' # min extreme, light green
+        elif colormap == 'Viridis':
+            color2 = '#FDE500' # max extreme
+            color1 = '#3B004D' # min extreme
+        elif colormap == 'Plasma':
+            color2 = '#EDF700' # max extreme 
+            color1 = '#000078' # min extreme
+        
+        
+        if minValue*maxValue >= 0:
+            if reverse == True:
+                color2 = 'Grey80' #if span is all pos or all neg, and not reversed, set min extreme to grey80
+            else:
+                color1 = 'Grey80'
+            
         if reverse: 
             color1 , color2 = color2, color1
             
@@ -246,47 +260,36 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,colormap=None,
                         tensorColorSpectrum=colormap_name,
                         vectorColorSpectrum=colormap_name)
                         
-        # if reverse:   
-        #     contourOptions.setValues(
-        #         spectrum='Reversed rainbow',
-        #         outsideLimitsAboveColor=color1,
-        #         outsideLimitsBelowColor=color2)
-        #     symbolOptions.setValues(
-        #         tensorColorSpectrum='Reversed rainbow',
-        #         vectorColorSpectrum='Reversed rainbow')
-        # else:
-        #     contourOptions.setValues(
-        #         spectrum='Rainbow',
-        #         outsideLimitsAboveColor=color2,
-        #         outsideLimitsBelowColor=color1)
-        #     symbolOptions.setValues(
-        #         tensorColorSpectrum='Rainbow',
-        #         vectorColorSpectrum='Rainbow')
 
 # (TS)
 def create_cmap(colormap,reverse,N):
-    "generate the cmap according to the user-selection for non-Rainbow colors"
+    """generate the cmap according to the user-selection for non-Rainbow colors
+        > current implementation linearly interpolates between two bounding colors
+          with N spaces corresponding to calculated tick vector
+        > future development should 
+    """
     
     import abaqus
+    import numpy as np
     "STEP 1: Determine bounding colors"
     if colormap == 'Rainbow':
         return
-        # color1= '#000080' # dark blue
-        # color2= '#800000' # dark red
-    
     elif colormap == 'Symmetric':
         color1_ext = (240,100,50) #00007F Darkest Blue
         color1_mid = (220,40,100) #99BAFF Lightest Blue
         color2_mid = (20, 40, 100)#FFBB99 Lightest red
         color2_ext = (0, 100, 50) #7F0000 Darkest Red
-        
+    # elif colormap == 'Cbs-cool':
+    #     color1 = (110, 10, 100)
+    #     color2 = (220, 90, 50)
+    
     "STEP 2: Check if the color map needs reversed"
     if (reverse == True) and colormap == 'Symmetric':
         color1_ext, color2_ext = color2_ext, color1_ext #Darkest swap w/ Darkest
         color1_mid, color2_mid = color2_mid, color1_mid #Lightest swap w/ Lightest
 
-    elif (reverse == True) and colormap != 'Symmetric': #pull a quick swap there
-        color1, color2 = color2, color1
+    # elif (reverse == True) and colormap != 'Symmetric': #pull a quick swap there
+    #     color1, color2 = color2, color1
     
     
     "STEP 3: Create interpolated list of hex colors between bounding colors"
@@ -297,13 +300,31 @@ def create_cmap(colormap,reverse,N):
         bot_colors.extend( top_colors ) #merge the two lists
         
         hex_colors = bot_colors
-    elif colormap == 'Rainbow':
-        hex_colors = generate_interpolated_hex_table(color1, color2, N)
+    elif colormap in ['Cbs-cool', 'Cbs-warm']:   #self-created colormap tables
+        hex_colors = generate_interpolated_hex_table(color1, color2,N)
+    elif colormap in ['Viridis','Plasma']:
+        print('ARE WER HERE')
+        # Python 2.7 implimentation
+        mpl_cmap = cm.get_cmap(colormap.lower(), N).colors
+        if reverse:  mpl_cmap = np.flip(mpl_cmap, axis=0)
+        # Python 3.5 + implimentation (untested -- waiting for Abaqus v2024 support of python 3+)
+        #mpl_cmap = matplotlib.colormaps[colormap.lower()].resample(N).colors
+        
+        hex_colors = convert_mpl_colortable( mpl_cmap )
         
     "STEP 3: Create the session spectrum object with name associated with user choice earlier"
-    if colormap in ['Symmetric','Cbs-cool','Cbs-warm']:
+    if colormap in ['Symmetric','Cbs-cool','Cbs-warm','Viridis','Plasma']:
         abaqus.session.Spectrum( name=colormap, colors=hex_colors)
-    
+
+def convert_mpl_colortable(mpl_cmap):
+    "Matplotlib returns table of RBGA values. This converts the table to a list of hex colors"
+    hex_colors = ['#{:02x}{:02x}{:02x}'.format(
+                int(255 * c[0] ),
+                int(255 * c[1] ),
+                int(255 * c[2]))  for c in mpl_cmap]
+    return hex_colors
+        
+
 # (TS) 
 def generate_interpolated_hex_table(color1, color2, N):
     """
@@ -334,7 +355,7 @@ def readSettings():
     if settings:
         return  # Already read
     try:
-        with open(jsonFileName) as f:
+        with open(jsonFileName, encoding='utf8') as f:
             settings.update(json.load(f))
     except Exception as e:
         if DEBUG:
@@ -376,7 +397,7 @@ def setValues(vpName, maxValue, minValue, guide, reverse=None,colormap=None,
     # Save settings to disk
     if not settings.get(' meta', {}).get('ignore'):
         try:
-            with open(jsonFileName, 'w') as f:
+            with open(jsonFileName, 'w',encoding='utf8') as f:
                 json.dump(settings, f, indent=2, sort_keys=True)
         except Exception as e:
             if DEBUG:
