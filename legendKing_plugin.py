@@ -1,3 +1,4 @@
+# coding: utf-8
 """Define the AFXForm class to handle scale dialog box events.
 
 Carl Osterwisch, October 2006
@@ -57,21 +58,32 @@ class scaleDB(AFXDataDialog):
                 text='Exactly',
                 tgt=form.maxExactKw)
 
-        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
-        self.min = AFXTextField(p=buttonframe,
+        self.minButtonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
+        self.min = AFXTextField(p=self.minButtonframe,
                 ncols=6,
                 labelText='Min',
                 tgt=form.minKw,
                 opts=LAYOUT_FILL_X | AFXTEXTFIELD_FLOAT)
-        FXCheckButton(p=buttonframe,
+        FXCheckButton(p=self.minButtonframe,
                 text='Exactly',
                 tgt=form.minExactKw)
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         FXCheckButton(p=buttonframe,
-                text='Reverse Rainbow',
+                text='Reverse color map',
                 tgt=form.reverseKw)
-
+        
+        # Adding in a combo-box for cmap selection
+        self.colormap = AFXComboBox(mainframe,0,4,'Color Map:',
+                               tgt=form.colormapKw,
+                               opts=LAYOUT_FILL_X)
+        self.colormap.appendItem('Rainbow')
+        self.colormap.appendItem('Symmetric')
+        self.colormap.appendItem('Viridis')
+        self.colormap.appendItem('Plasma')
+        # self.colormap.appendItem('Cbs-cool')
+        # self.colormap.appendItem('Cbs-warm')
+        
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         FXRadioButton(buttonframe, 'Linear', form.logKw, LINEAR.getId())
         FXRadioButton(buttonframe, 'Log Scale', form.logKw, LOG.getId())
@@ -127,7 +139,7 @@ class scaleDB(AFXDataDialog):
         else:
             # Other display object (xyplot, etc)
             self.minmaxQuery = None
-
+        
     def onDisplayChanged(self):
         "Changed odbDisplay; recall previous settings"
         if not hasattr(self.odbDisplay, 'primaryVariable'):
@@ -214,6 +226,11 @@ class scaleForm(AFXForm):
         self.logKw = AFXSymConstKeyword(command=setup_scale,
                 name='log',
                 defaultValue=LINEAR.getId(),
+                isRequired=TRUE)
+        
+        self.colormapKw = AFXStringKeyword(command=setup_scale,
+                name='colormap',
+                defaultValue='Rainbow',
                 isRequired=TRUE)
 
 

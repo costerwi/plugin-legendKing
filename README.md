@@ -4,6 +4,7 @@ Abaqus CAE plugin to automatically setup a reasonable legend scale
 * Finds sensible tick increments between specific min and max values
 * Linear and log scales
 * Option for exact criteria limits
+* Support for sequential & symmetrically divergent color maps
 * Stores and recalls previous settings used for each field output
 
 ## Installation
