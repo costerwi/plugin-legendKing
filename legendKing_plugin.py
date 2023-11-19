@@ -3,7 +3,7 @@
 Carl Osterwisch, October 2006
 """
 
-__version__ = '0.10.1'
+__version__ = '0.10.2'
 
 from abaqusGui import *
 from abaqusConstants import *

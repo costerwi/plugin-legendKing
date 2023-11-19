@@ -69,13 +69,28 @@ def logScale(maxValue, minValue, guide=15):
     """Find a reasonable set of ticks for given range
 
     >>> logScale(200, 0)
-    [1e-16, 1e-14, 1e-12, 1e-10, 1e-08, 1e-06, 0.0001, 0.01, 1, 100]
+    [1e-14, 1e-12, 1e-10, 1e-08, 1e-06, 0.0001, 0.01, 1, 100]
+    >>> logScale(0, -1)
+    [1e-16, 1e-14, 1e-12, 1e-10, 1e-08, 1e-06, 0.0001, 0.01, 1]
+    >>> logScale(10, 1) # TODO make smarter ticks for small ranges
+    [0.1, 1, 10]
     >>> logScale(10055, 1)
     [1, 10, 100, 1000, 10000]
     """
     from math import floor, ceil, log10
-    maxOrder = int(floor(log10(max(1e-8, maxValue))))
-    minOrder = int(ceil(min(maxOrder - 2, log10(minValue))))
+    if maxValue <= 0:
+        # avoid math domain error
+        maxOrder = 0
+    else:
+        maxOrder = int(floor(log10(maxValue)))
+    if minValue <= 0:
+        # avoid math domain error
+        minOrder = maxOrder - guide - 1
+    else:
+        minOrder = min(
+                maxOrder - 2, # at least 2 orders of magnitude
+                int(ceil(log10(minValue)))
+        )
     stepOrder = 1 + (maxOrder - minOrder)//guide
 
     ticks = [10**e for e in range(minOrder, maxOrder + 1, stepOrder)]
