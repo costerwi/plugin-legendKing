@@ -78,8 +78,19 @@ def logScale(maxValue, minValue, guide=15):
     [1, 10, 100, 1000, 10000]
     """
     from math import floor, ceil, log10
-    maxOrder = int(floor(log10(max(1e-8, maxValue))))
-    minOrder = int(ceil(min(maxOrder - 2, log10(minValue))))
+    if maxValue <= 0:
+        # avoid math domain error
+        maxOrder = 0
+    else:
+        maxOrder = int(floor(log10(maxValue)))
+    if minValue <= 0:
+        # avoid math domain error
+        minOrder = maxOrder - guide - 1
+    else:
+        minOrder = min(
+                maxOrder - 2, # at least 2 orders of magnitude
+                int(ceil(log10(minValue)))
+        )
     stepOrder = 1 + (maxOrder - minOrder)//guide
 
     ticks = [10**e for e in range(minOrder, maxOrder + 1, stepOrder)]
