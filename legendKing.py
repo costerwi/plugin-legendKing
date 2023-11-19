@@ -69,7 +69,11 @@ def logScale(maxValue, minValue, guide=15):
     """Find a reasonable set of ticks for given range
 
     >>> logScale(200, 0)
-    [1e-16, 1e-14, 1e-12, 1e-10, 1e-08, 1e-06, 0.0001, 0.01, 1, 100]
+    [1e-14, 1e-12, 1e-10, 1e-08, 1e-06, 0.0001, 0.01, 1, 100]
+    >>> logScale(0, -1)
+    [1e-16, 1e-14, 1e-12, 1e-10, 1e-08, 1e-06, 0.0001, 0.01, 1]
+    >>> logScale(10, 1) # TODO make smarter ticks for small ranges
+    [0.1, 1, 10]
     >>> logScale(10055, 1)
     [1, 10, 100, 1000, 10000]
     """
