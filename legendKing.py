@@ -5,7 +5,7 @@ from abaqusConstants import *
 
 settings = {}   # Settings in memory
 jsonFileName = os.path.expanduser('~/.legendKing.json') # Settings file name
-DEBUG = os.environ.has_key('DEBUG')
+DEBUG = 'DEBUG' in os.environ
 
 
 def almostWhole(x, epsilon=1e-6):

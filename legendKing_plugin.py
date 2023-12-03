@@ -3,7 +3,7 @@
 Carl Osterwisch, October 2006
 """
 
-__version__ = '0.10.2'
+__version__ = '0.10.3'
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -19,6 +19,8 @@ class myQuery:
     def __del__(self):
         "unregister the query when this object is deleted"
         self.object.unregisterQuery(self.subroutine)
+    def __repr__(self):
+        return 'myQuery {}'.format(self.subroutine.__doc__)
 
 ###########################################################################
 # Dialog box definition
@@ -101,6 +103,7 @@ class scaleDB(AFXDataDialog):
         AFXDataDialog.hide(self)
 
     def onSessionChanged(self):
+        "Recalculate settings based on a new session"
         if session.currentViewportName == self.vpNameKw.getValue():
             return
         # If the current viewport changes then the contourQuery needs
