@@ -129,19 +129,33 @@ def tickFormat(ticks):
     return FIXED, int(numDecimal)
 
 
-def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
-        maxExact=None, minExact=None, log=False):
+def setup_scale(**kwargs):
     """Set the Abaqus/Viewer contour legend scale to even increments.
 
     Carl Osterwisch, 2006"""
     import abaqus
     from math import log10
 
+    vpName = kwargs.get('vpName', abaqus.session.currentViewportName)
     viewport = abaqus.session.viewports[vpName]
-    if hasattr(viewport.odbDisplay, 'contourOptions'):
-        contourOptions = viewport.odbDisplay.contourOptions
-        symbolOptions = viewport.odbDisplay.symbolOptions
-        annotationOptions = viewport.viewportAnnotationOptions
+    if not hasattr(viewport.odbDisplay, 'contourOptions'):
+        return
+    contourOptions = viewport.odbDisplay.contourOptions
+    symbolOptions = viewport.odbDisplay.symbolOptions
+    annotationOptions = viewport.viewportAnnotationOptions
+
+    options = {
+            'outsideLimitsAboveColor': kwargs.get('above'),
+            'outsideLimitsBelowColor': kwargs.get('below'),
+            'spectrum': kwargs.get('spectrum'),
+        }
+    contourOptions.setValues(**{option:value.encode()
+                for option, value in options.items() if value is not None})
+
+    if all([option in kwargs for option in ('minValue', 'maxValue', 'guide')]):
+        minValue = kwargs['minValue']
+        maxValue = kwargs['maxValue']
+        guide = kwargs['guide']
 
         if minValue > maxValue: # swap if necessary
             minValue, maxValue = maxValue, minValue
@@ -149,11 +163,7 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
         elif minValue == maxValue:
             raise ValueError('max scale == min scale')
 
-        # Load defaults
-        if None == reverse and contourOptions.spectrum.startswith('Reversed'):
-            reverse = True
-
-        if log:
+        if kwargs.get('log'):
             ticks = logScale(maxValue, minValue, guide)
             contourOptions.setValues(intervalType=LOG)
         else:
@@ -175,16 +185,16 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
                 tensorMinValueAutoCompute=OFF, tensorMaxValueAutoCompute=OFF,
                 tensorIntervalNumber=len(ticks) - 1,
                 )
-        if minExact and minValue < ticks[0]:
+        if kwargs.get('minExact') and minValue < ticks[0]:
             ticks.insert(0, minValue)
-        if maxExact and maxValue > ticks[-1]:
+        if kwargs.get('maxExact') and maxValue > ticks[-1]:
             ticks.append(maxValue)
         if len(ticks) != contourOptions.numIntervals + 1:
             contourOptions.setValues(
                 intervalType=USER_DEFINED,
                 intervalValues=ticks,
                 )
-        if log:
+        if kwargs.get('log'):
             fmt, decPlaces = SCIENTIFIC, 1
         else:
             fmt, decPlaces = tickFormat(ticks)
@@ -195,29 +205,6 @@ def setup_scale(vpName, maxValue, minValue, guide, reverse=None,
         if DEBUG:
             print(maxValue, minValue, maxExact, minExact)
             print(ticks, fmt, decPlaces)
-
-        if minValue*maxValue >= 0:
-            color1 = 'Grey80'
-        else:
-            color1 = '#000080' # dark blue
-        color2 = '#800000' # dark red
-
-        if reverse:
-            contourOptions.setValues(
-                spectrum='Reversed rainbow',
-                outsideLimitsAboveColor=color1,
-                outsideLimitsBelowColor=color2)
-            symbolOptions.setValues(
-                tensorColorSpectrum='Reversed rainbow',
-                vectorColorSpectrum='Reversed rainbow')
-        else:
-            contourOptions.setValues(
-                spectrum='Rainbow',
-                outsideLimitsAboveColor=color2,
-                outsideLimitsBelowColor=color1)
-            symbolOptions.setValues(
-                tensorColorSpectrum='Rainbow',
-                vectorColorSpectrum='Rainbow')
 
 
 def readSettings():
@@ -238,18 +225,24 @@ def readSettings():
         })
 
 
-def setValues(vpName, maxValue, minValue, guide, reverse=None,
+def setValues(vpName, maxValue, minValue, guide,
         maxExact=None, minExact=None, log=False):
-    "Set scale and save these settings for future recall"
+    """Set scale and save these settings for future recall
+
+    Called by CAE
+
+    Note the spectrum, above, and below colors are set directly to
+    contourOptions but the current values are also saved by this method.
+    """
 
     import abaqus
     try:
-        setup_scale(vpName, maxValue, minValue, guide, reverse,
-            maxExact, minExact, log==LOG)
+        setup_scale(vpName=vpName, maxValue=maxValue, minValue=minValue, guide=guide,
+            maxExact=maxExact, minExact=minExact, log=(log==LOG))
     except ValueError as e:
         if DEBUG:
             print(e)
-    readSettings()
+    readSettings()  # make sure recent settings are loaded
     viewport = abaqus.session.viewports[vpName]
     primaryVariable = viewport.odbDisplay.primaryVariable
     name = ' '.join((primaryVariable[0], primaryVariable[5])).strip()
@@ -257,10 +250,12 @@ def setValues(vpName, maxValue, minValue, guide, reverse=None,
             'maxValue': maxValue,
             'minValue': minValue,
             'guide': guide,
-            'reverse': bool(reverse),
             'maxExact': bool(maxExact),
             'minExact': bool(minExact),
             'log': log==LOG,
+            'spectrum': viewport.odbDisplay.contourOptions.spectrum,
+            'above': viewport.odbDisplay.contourOptions.outsideLimitsAboveColor,
+            'below': viewport.odbDisplay.contourOptions.outsideLimitsBelowColor,
         }
 
     # Save settings to disk
@@ -285,7 +280,7 @@ def recall(vpName):
     name = ' '.join( (primaryVariable[0], primaryVariable[5]) ).strip()
     fo = settings.get(name)
     if fo and not settings.get(' meta', {}).get('ignore'):
-        setup_scale(vpName, **fo)
+        setup_scale(vpName=vpName, **fo)
 
 
 def restore_defaults(vpName):
