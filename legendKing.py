@@ -325,6 +325,38 @@ def recall(vpName):
         setup_legend(viewport)
 
 
+def reverse_spectrum(vpName):
+    """Reverse the current color spectrum"""
+    from abaqus import session
+    viewport = session.viewports[vpName]
+    if not hasattr(viewport.odbDisplay, 'contourOptions'):
+        return  # abort if no odb displayed
+
+    contourOptions = viewport.odbDisplay.contourOptions
+    colors = list(reversed(session.spectrums[contourOptions.spectrum].colors))
+    for spectrum in session.spectrums.values():
+        if not len(spectrum.colors) == len(colors):
+            continue
+        if all(a == b for a, b in zip(colors, spectrum.colors)):
+            break # found an existing match
+    else:
+        # New reversed spectrum must be created
+        spectrum = session.Spectrum(
+                name='Reversed ' + contourOptions.spectrum,
+                colors=colors)
+
+    name = fieldName(viewport)
+    settings.setdefault(name, {}).update(
+        {
+            'spectrum': spectrum.name,
+            'above': contourOptions.outsideLimitsBelowColor,
+            'below': contourOptions.outsideLimitsAboveColor,
+        }
+    )
+    setup_legend(viewport)
+    writeSettings()
+
+
 def restore_defaults(vpName):
     """Set the contour legend scale to the default values."""
     from abaqus import session

@@ -32,8 +32,8 @@ class scaleDB(AFXDataDialog):
     """
 
     [
-        ID_RESTORE,
-        ID_DEFAULTS,
+        ID_REVERSE,
+        ID_RESET,
         ID_LAST
     ] = range(AFXDataDialog.ID_LAST, AFXDataDialog.ID_LAST + 3)
 
@@ -42,10 +42,11 @@ class scaleDB(AFXDataDialog):
         AFXDataDialog.__init__(self, form, "Legend King",
                 self.APPLY, DIALOG_NORMAL)
 
-#        self.appendActionButton(text='Reverse', tgt=self, sel=self.ID_DEFAULTS)
-#
-        self.appendActionButton(text='Reset', tgt=self, sel=self.ID_DEFAULTS)
-        FXMAPFUNC(self, SEL_COMMAND, self.ID_DEFAULTS, scaleDB.onDefaults)
+        self.appendActionButton(text='Reverse', tgt=self, sel=self.ID_REVERSE)
+        FXMAPFUNC(self, SEL_COMMAND, self.ID_REVERSE, scaleDB.onReverse)
+
+        self.appendActionButton(text='Reset', tgt=self, sel=self.ID_RESET)
+        FXMAPFUNC(self, SEL_COMMAND, self.ID_RESET, scaleDB.onReset)
 
         self.vpNameKw = form.vpNameKw # local reference
 
@@ -178,7 +179,12 @@ class scaleDB(AFXDataDialog):
                 self.max.getTarget().setValue(minmax[1])
             self.minmax = minmax
 
-    def onDefaults(self, sender, sel, ptr):
+    def onReverse(self, sender, sel, ptr):
+        "User requested reverse spectrum colors."
+        sendCommand("legendKing.reverse_spectrum(%r)"%self.vpNameKw.getValue())
+        return 1
+
+    def onReset(self, sender, sel, ptr):
         "User requested return to default settings."
         sendCommand("legendKing.restore_defaults(%r)"%self.vpNameKw.getValue())
         return 1
@@ -272,4 +278,4 @@ toolset.registerGuiMenuButton(
         applicableModules=['Visualization'],
         description='Setup a reasonable legend scale quick and easy.',
         helpUrl='https://github.com/costerwi/plugin-legendKing',
-        )
+        ) 
