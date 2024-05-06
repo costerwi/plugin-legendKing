@@ -1,10 +1,10 @@
 from __future__ import print_function, with_statement
 import os
-import json
+import sys
 from abaqusConstants import *
 
 settings = {}   # Settings in memory
-jsonFileName = os.path.expanduser('~/.legendKing.json') # Settings file name
+jsonFileName = os.path.join(os.path.expanduser('~'), '.legendKing.json') # Settings file name
 DEBUG = 'DEBUG' in os.environ
 
 
@@ -129,33 +129,67 @@ def tickFormat(ticks):
     return FIXED, int(numDecimal)
 
 
-def setup_scale(**kwargs):
+if sys.version_info.major >= 3:
+    def toAbaqusString(unicodeString):
+        "Do nothing for Python3, Abaqus >=2024"
+        return unicodeString
+    def fromAbaqusString(unicodeString):
+        "Do nothing for Python3, Abaqus >=2024"
+        return unicodeString
+else:
+    def toAbaqusString(unicodeString):
+        "Convert unicode to str for Abaqus <2024"
+        return unicodeString.encode('latin1')
+    def fromAbaqusString(unicodeString):
+        "Convert str to unicode for Abaqus <2024"
+        return unicodeString.decode('latin1')
+
+
+def fieldName(viewport):
+    "Return unique fieldoutput name for specified viewport"
+    primaryVariable = viewport.odbDisplay.primaryVariable
+    return fromAbaqusString(' '.join((primaryVariable[0], primaryVariable[5])).strip())
+
+
+def setup_legend(viewport):
     """Set the Abaqus/Viewer contour legend scale to even increments.
 
     Carl Osterwisch, 2006"""
-    import abaqus
+
+    from abaqus import session
     from math import log10
 
-    vpName = kwargs.get('vpName', abaqus.session.currentViewportName)
-    viewport = abaqus.session.viewports[vpName]
-    if not hasattr(viewport.odbDisplay, 'contourOptions'):
-        return
+    legendSettings = settings.get(fieldName(viewport), {})
     contourOptions = viewport.odbDisplay.contourOptions
     symbolOptions = viewport.odbDisplay.symbolOptions
     annotationOptions = viewport.viewportAnnotationOptions
 
+    spectrum = fromAbaqusString(legendSettings.get('spectrum', contourOptions.spectrum))
+    if spectrum and not spectrum in session.spectrums:
+        # spectrum is not yet defined in the session; try to recall saved version
+        spectrums = settings.get(' spectrums')
+        if spectrums and spectrum in spectrums: # spectrum exists in settings
+            session.Spectrum(name=toAbaqusString(spectrum),
+                colors=[toAbaqusString(color) for color in spectrums[spectrum]])
+        else:
+            spectrum = None # undefined in session and not available in settings
+
     options = {
-            'outsideLimitsAboveColor': kwargs.get('above'),
-            'outsideLimitsBelowColor': kwargs.get('below'),
-            'spectrum': kwargs.get('spectrum'),
+            'outsideLimitsAboveColor': legendSettings.get('above'),
+            'outsideLimitsBelowColor': legendSettings.get('below'),
+            'spectrum': spectrum,
         }
-    contourOptions.setValues(**{option:value.encode()
+    contourOptions.setValues(**{option:toAbaqusString(value)
                 for option, value in options.items() if value is not None})
 
-    if all([option in kwargs for option in ('minValue', 'maxValue', 'guide')]):
-        minValue = kwargs['minValue']
-        maxValue = kwargs['maxValue']
-        guide = kwargs['guide']
+    # Save spectrum colors in case they are needed later
+    if spectrum:
+        settings[' spectrums'][spectrum] = session.spectrums[toAbaqusString(spectrum)].colors
+
+    if all(option in legendSettings for option in ('minValue', 'maxValue', 'guide')):
+        minValue = legendSettings['minValue']
+        maxValue = legendSettings['maxValue']
+        guide = legendSettings['guide']
 
         if minValue > maxValue: # swap if necessary
             minValue, maxValue = maxValue, minValue
@@ -163,7 +197,7 @@ def setup_scale(**kwargs):
         elif minValue == maxValue:
             raise ValueError('max scale == min scale')
 
-        if kwargs.get('log'):
+        if legendSettings.get('log'):
             ticks = logScale(maxValue, minValue, guide)
             contourOptions.setValues(intervalType=LOG)
         else:
@@ -185,16 +219,16 @@ def setup_scale(**kwargs):
                 tensorMinValueAutoCompute=OFF, tensorMaxValueAutoCompute=OFF,
                 tensorIntervalNumber=len(ticks) - 1,
                 )
-        if kwargs.get('minExact') and minValue < ticks[0]:
+        if legendSettings.get('minExact') and minValue < ticks[0]:
             ticks.insert(0, minValue)
-        if kwargs.get('maxExact') and maxValue > ticks[-1]:
+        if legendSettings.get('maxExact') and maxValue > ticks[-1]:
             ticks.append(maxValue)
         if len(ticks) != contourOptions.numIntervals + 1:
             contourOptions.setValues(
                 intervalType=USER_DEFINED,
                 intervalValues=ticks,
                 )
-        if kwargs.get('log'):
+        if legendSettings.get('log'):
             fmt, decPlaces = SCIENTIFIC, 1
         else:
             fmt, decPlaces = tickFormat(ticks)
@@ -203,12 +237,15 @@ def setup_scale(**kwargs):
                 legendDecimalPlaces=decPlaces,
                 )
         if DEBUG:
-            print(maxValue, minValue, maxExact, minExact)
+            print(legendSettings.get('log', 'linear'),
+                  minValue, maxValue,
+                  legendSettings.get('minExact'), legendSettings.get('maxExact'))
             print(ticks, fmt, decPlaces)
 
 
 def readSettings():
     "Read settings file or create a new settings if necessary"
+    import json
     if settings:
         return  # Already read
     try:
@@ -216,36 +253,50 @@ def readSettings():
             settings.update(json.load(f))
     except Exception as e:
         if DEBUG:
-            print(e)
+            print('readSettings', e)
     meta = settings.setdefault(' meta', {})
     meta.setdefault('ignore', False) # used to disable memory of previous settings
     meta.update({
             'description': 'This file stores recently used settings according to field output',
             'plugin': os.path.dirname(__file__),
         })
+    spectrums = settings.setdefault(' spectrums', {}) # store custom spectrums
+    spectrums.update({
+            ' note': 'Only used if spectrum is undefined when requested',
+        })
+    if not meta.get('ignore'):
+        print('Using Legend King plugin settings file', jsonFileName)
+
+
+def writeSettings():
+    "Save settings to disk"
+    import json
+    if not settings.get(' meta', {}).get('ignore'):
+        try:
+            with open(jsonFileName, 'w') as f:
+                json.dump(settings, f, indent=2, sort_keys=True)
+        except Exception as e:
+            if DEBUG:
+                print('writeSettings', e)
 
 
 def setValues(vpName, maxValue, minValue, guide,
         maxExact=None, minExact=None, log=False):
     """Set scale and save these settings for future recall
 
-    Called by CAE
+    Called directly by CAE
 
-    Note the spectrum, above, and below colors are set directly to
+    Note the spectrum name, above, and below colors are set directly to
     contourOptions but the current values are also saved by this method.
     """
 
-    import abaqus
-    try:
-        setup_scale(vpName=vpName, maxValue=maxValue, minValue=minValue, guide=guide,
-            maxExact=maxExact, minExact=minExact, log=(log==LOG))
-    except ValueError as e:
-        if DEBUG:
-            print(e)
-    readSettings()  # make sure recent settings are loaded
-    viewport = abaqus.session.viewports[vpName]
-    primaryVariable = viewport.odbDisplay.primaryVariable
-    name = ' '.join((primaryVariable[0], primaryVariable[5])).strip()
+    from abaqus import session
+    viewport = session.viewports[vpName]
+    if not hasattr(viewport.odbDisplay, 'contourOptions'):
+        return
+    readSettings()  # make sure settings are loaded
+    name = fieldName(viewport)
+    spectrum = viewport.odbDisplay.contourOptions.spectrum
     settings[name] = {
             'maxValue': maxValue,
             'minValue': minValue,
@@ -253,43 +304,34 @@ def setValues(vpName, maxValue, minValue, guide,
             'maxExact': bool(maxExact),
             'minExact': bool(minExact),
             'log': log==LOG,
-            'spectrum': viewport.odbDisplay.contourOptions.spectrum,
+            'spectrum': spectrum,
             'above': viewport.odbDisplay.contourOptions.outsideLimitsAboveColor,
             'below': viewport.odbDisplay.contourOptions.outsideLimitsBelowColor,
         }
 
-    # Save settings to disk
-    if not settings.get(' meta', {}).get('ignore'):
-        try:
-            with open(jsonFileName, 'w') as f:
-                json.dump(settings, f, indent=2, sort_keys=True)
-        except Exception as e:
-            if DEBUG:
-                print(e)
+    setup_legend(viewport)
+    writeSettings()
 
 
 def recall(vpName):
     "Read previous settings for this primaryVariable"
 
-    import abaqus
-    viewport = abaqus.session.viewports[vpName]
+    from abaqus import session
+    viewport = session.viewports[vpName]
     if not hasattr(viewport.odbDisplay, 'contourOptions'):
         return
     readSettings()
-    primaryVariable = viewport.odbDisplay.primaryVariable
-    name = ' '.join( (primaryVariable[0], primaryVariable[5]) ).strip()
-    fo = settings.get(name)
-    if fo and not settings.get(' meta', {}).get('ignore'):
-        setup_scale(vpName=vpName, **fo)
+    if not settings.get(' meta', {}).get('ignore'):
+        setup_legend(viewport)
 
 
 def restore_defaults(vpName):
     """Set the contour legend scale to the default values."""
-    import abaqus
-    viewport = abaqus.session.viewports[vpName]
+    from abaqus import session
+    viewport = session.viewports[vpName]
     if not hasattr(viewport.odbDisplay, 'contourOptions'):
         return
-    default = abaqus.session.defaultOdbDisplay.contourOptions
+    default = session.defaultOdbDisplay.contourOptions
     viewport.odbDisplay.contourOptions.setValues(
             minAutoCompute=default.minAutoCompute,
             maxAutoCompute=default.maxAutoCompute,
@@ -299,7 +341,7 @@ def restore_defaults(vpName):
             outsideLimitsAboveColor=default.outsideLimitsAboveColor,
             outsideLimitsBelowColor=default.outsideLimitsBelowColor)
 
-    default = abaqus.session.defaultOdbDisplay.symbolOptions
+    default = session.defaultOdbDisplay.symbolOptions
     viewport.odbDisplay.symbolOptions.setValues(
             vectorMinValueAutoCompute=default.vectorMinValueAutoCompute,
             vectorMaxValueAutoCompute=default.vectorMaxValueAutoCompute,
