@@ -13,4 +13,4 @@ Abaqus CAE plugin to automatically setup a reasonable legend scale
 3. Restart Abaqus CAE and you will find Legend King in the Visualizer plug-ins menu
 
 ## Example
-![image](https://github.com/costerwi/plugin-legendKing/assets/7069475/7f754d6e-277b-4da0-b566-25d02a36bf8f)
+![image](https://github.com/costerwi/plugin-legendKing/assets/7069475/ff5e6315-3946-49ed-bd24-c446e1d20e4b)
