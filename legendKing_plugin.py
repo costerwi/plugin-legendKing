@@ -3,7 +3,7 @@
 Carl Osterwisch, October 2006
 """
 
-__version__ = '0.10.3'
+__version__ = '0.11.0'
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -32,8 +32,8 @@ class scaleDB(AFXDataDialog):
     """
 
     [
-        ID_RESTORE,
-        ID_DEFAULTS,
+        ID_REVERSE,
+        ID_RESET,
         ID_LAST
     ] = range(AFXDataDialog.ID_LAST, AFXDataDialog.ID_LAST + 3)
 
@@ -42,8 +42,11 @@ class scaleDB(AFXDataDialog):
         AFXDataDialog.__init__(self, form, "Legend King",
                 self.APPLY, DIALOG_NORMAL)
 
-        self.appendActionButton(text='Reset', tgt=self, sel=self.ID_DEFAULTS)
-        FXMAPFUNC(self, SEL_COMMAND, self.ID_DEFAULTS, scaleDB.onDefaults)
+        self.appendActionButton(text='Reverse', tgt=self, sel=self.ID_REVERSE)
+        FXMAPFUNC(self, SEL_COMMAND, self.ID_REVERSE, scaleDB.onReverse)
+
+        self.appendActionButton(text='Reset', tgt=self, sel=self.ID_RESET)
+        FXMAPFUNC(self, SEL_COMMAND, self.ID_RESET, scaleDB.onReset)
 
         self.vpNameKw = form.vpNameKw # local reference
 
@@ -51,7 +54,7 @@ class scaleDB(AFXDataDialog):
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         self.max = AFXTextField(p=buttonframe,
-                ncols=6,
+                ncols=8,
                 labelText='Max',
                 tgt=form.maxKw,
                 opts=LAYOUT_FILL_X | AFXTEXTFIELD_FLOAT)
@@ -61,7 +64,7 @@ class scaleDB(AFXDataDialog):
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         self.min = AFXTextField(p=buttonframe,
-                ncols=6,
+                ncols=8,
                 labelText='Min',
                 tgt=form.minKw,
                 opts=LAYOUT_FILL_X | AFXTEXTFIELD_FLOAT)
@@ -70,21 +73,38 @@ class scaleDB(AFXDataDialog):
                 tgt=form.minExactKw)
 
         buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
-        FXCheckButton(p=buttonframe,
-                text='Reverse Rainbow',
-                tgt=form.reverseKw)
-
-        buttonframe = FXHorizontalFrame(mainframe, LAYOUT_FILL_X)
         FXRadioButton(buttonframe, 'Linear', form.logKw, LINEAR.getId())
         FXRadioButton(buttonframe, 'Log Scale', form.logKw, LOG.getId())
 
         guide = AFXSlider(p=mainframe, tgt=form.guideKw,
-                opts=AFXSLIDER_HORIZONTAL | AFXSLIDER_INSIDE_BAR | LAYOUT_FILL_X)
+                opts=AFXSLIDER_HORIZONTAL | AFXSLIDER_INSIDE_BAR | LAYOUT_FILL_X,
+                pb=10)
         guide.setRange(3, 24)
         guide.setIncrement(1)
         guide.setMinLabelText('Fewer Intervals')
         guide.setMaxLabelText('More')
         guide.setValue(15)
+
+        buttonframe = AFXVerticalAligner(mainframe, LAYOUT_FILL_X)
+
+        AFXColorButton(p=buttonframe,
+                text='Color above max',
+                tgt=form.outsideAboveKw,
+                opts=LAYOUT_FILL_X)
+
+        spectrumCombo = AFXComboBox(p=buttonframe,
+                ncols=5,
+                nvis=10,
+                text='',
+                tgt=form.spectrumKw,
+                opts=LAYOUT_FILL_X)
+        for spectrum in session.spectrums.keys():
+            spectrumCombo.appendItem(spectrum)
+
+        AFXColorButton(p=buttonframe,
+                text='Color below min',
+                tgt=form.outsideBelowKw,
+                opts=LAYOUT_FILL_X)
 
 
     def show(self):
@@ -159,7 +179,12 @@ class scaleDB(AFXDataDialog):
                 self.max.getTarget().setValue(minmax[1])
             self.minmax = minmax
 
-    def onDefaults(self, sender, sel, ptr):
+    def onReverse(self, sender, sel, ptr):
+        "User requested reverse spectrum colors."
+        sendCommand("legendKing.reverse_spectrum(%r)"%self.vpNameKw.getValue())
+        return 1
+
+    def onReset(self, sender, sel, ptr):
         "User requested return to default settings."
         sendCommand("legendKing.restore_defaults(%r)"%self.vpNameKw.getValue())
         return 1
@@ -173,6 +198,28 @@ class scaleForm(AFXForm):
     def __init__(self, owner):
 
         AFXForm.__init__(self, owner) # Construct the base class.
+
+        # color spectrum
+        contourOptions = AFXGuiCommand(
+                mode=self,
+                method='setValues',
+                objectName='session.viewports[%s].odbDisplay.contourOptions',
+                registerQuery=TRUE)
+
+        self.outsideAboveKw = AFXStringKeyword(
+                command=contourOptions,
+                name='outsideLimitsAboveColor',
+                isRequired=FALSE)
+
+        self.outsideBelowKw = AFXStringKeyword(
+                command=contourOptions,
+                name='outsideLimitsBelowColor',
+                isRequired=FALSE)
+
+        self.spectrumKw = AFXStringKeyword(
+                command=contourOptions,
+                name='spectrum',
+                isRequired=FALSE)
 
         # setup_scale kernel command
         setup_scale = AFXGuiCommand(mode=self,
@@ -194,10 +241,6 @@ class scaleForm(AFXForm):
                 name='guide',
                 isRequired=TRUE,
                 defaultValue=15)
-
-        self.reverseKw = AFXBoolKeyword(command=setup_scale,
-                name='reverse',
-                isRequired=TRUE)
 
         self.vpNameKw = AFXStringKeyword(command=setup_scale,
                 name='vpName',
@@ -235,4 +278,4 @@ toolset.registerGuiMenuButton(
         applicableModules=['Visualization'],
         description='Setup a reasonable legend scale quick and easy.',
         helpUrl='https://github.com/costerwi/plugin-legendKing',
-        )
+        ) 
