@@ -3,7 +3,7 @@
 Carl Osterwisch, October 2006
 """
 
-__version__ = '0.11.0'
+__version__ = '0.11.1'
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -31,11 +31,8 @@ class scaleDB(AFXDataDialog):
     scaleForm will create an instance of this class when the user requests it.
     """
 
-    [
-        ID_REVERSE,
-        ID_RESET,
-        ID_LAST
-    ] = range(AFXDataDialog.ID_LAST, AFXDataDialog.ID_LAST + 3)
+    ID_LAST = AFXDataDialog.ID_LAST + 3
+    ID_REVERSE, ID_RESET, ID_LAST = range(AFXDataDialog.ID_LAST, ID_LAST)
 
     def __init__(self, form):
         # Construct the base class.
