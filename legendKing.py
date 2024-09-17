@@ -189,6 +189,8 @@ def setup_legend(viewport):
     if all(option in legendSettings for option in ('minValue', 'maxValue', 'guide')):
         minValue = legendSettings['minValue']
         maxValue = legendSettings['maxValue']
+        minExact = legendSettings.get('minExact')
+        maxExact = legendSettings.get('maxExact')
         guide = legendSettings['guide']
 
         if minValue > maxValue: # swap if necessary
@@ -219,9 +221,9 @@ def setup_legend(viewport):
                 tensorMinValueAutoCompute=OFF, tensorMaxValueAutoCompute=OFF,
                 tensorIntervalNumber=len(ticks) - 1,
                 )
-        if legendSettings.get('minExact') and minValue < ticks[0]:
+        if minExact and minValue < ticks[0]:
             ticks.insert(0, minValue)
-        if legendSettings.get('maxExact') and maxValue > ticks[-1]:
+        if maxExact and maxValue > ticks[-1]:
             ticks.append(maxValue)
         if len(ticks) != contourOptions.numIntervals + 1:
             contourOptions.setValues(
@@ -239,7 +241,7 @@ def setup_legend(viewport):
         if DEBUG:
             print(legendSettings.get('log', 'linear'),
                   minValue, maxValue,
-                  legendSettings.get('minExact'), legendSettings.get('maxExact'))
+                  minExact, maxExact)
             print(ticks, fmt, decPlaces)
 
 
