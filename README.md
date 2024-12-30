@@ -5,6 +5,7 @@ Abaqus CAE plugin to automatically setup a reasonable legend scale
 * Linear and log scales
 * Option for exact criteria limits
 * Stores and recalls previous settings used for each field output
+* Supports built-in and user defined color spectrums
 
 ## Installation
 

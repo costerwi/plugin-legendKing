@@ -3,7 +3,7 @@
 Carl Osterwisch, October 2006
 """
 
-__version__ = '0.11.1'
+__version__ = '0.11.2'
 
 from abaqusGui import *
 from abaqusConstants import *
@@ -37,7 +37,7 @@ class scaleDB(AFXDataDialog):
     def __init__(self, form):
         # Construct the base class.
         AFXDataDialog.__init__(self, form, "Legend King",
-                self.APPLY, DIALOG_NORMAL)
+                self.APPLY, DIALOG_ACTIONS_SEPARATOR|DECOR_RESIZE)
 
         self.appendActionButton(text='Reverse', tgt=self, sel=self.ID_REVERSE)
         FXMAPFUNC(self, SEL_COMMAND, self.ID_REVERSE, scaleDB.onReverse)
@@ -74,15 +74,14 @@ class scaleDB(AFXDataDialog):
         FXRadioButton(buttonframe, 'Log Scale', form.logKw, LOG.getId())
 
         guide = AFXSlider(p=mainframe, tgt=form.guideKw,
-                opts=AFXSLIDER_HORIZONTAL | AFXSLIDER_INSIDE_BAR | LAYOUT_FILL_X,
-                pb=10)
+                opts=AFXSLIDER_HORIZONTAL | AFXSLIDER_INSIDE_BAR | LAYOUT_FILL_X)
         guide.setRange(3, 24)
         guide.setIncrement(1)
         guide.setMinLabelText('Fewer Intervals')
         guide.setMaxLabelText('More')
         guide.setValue(15)
 
-        buttonframe = AFXVerticalAligner(mainframe, LAYOUT_FILL_X)
+        buttonframe = AFXVerticalAligner(mainframe, LAYOUT_FILL_X, pt=10)
 
         AFXColorButton(p=buttonframe,
                 text='Color above max',
